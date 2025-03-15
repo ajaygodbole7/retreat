@@ -1,6 +1,6 @@
 import express from 'express';
 import {
-    getIngredients,
+    getAllIngredients,
     getIngredientById,
     createIngredient,
     updateIngredient,
@@ -15,7 +15,8 @@ import {
 
 const router = express.Router();
 
-router.get('/', validateRequest({ query: getIngredientsQuerySchema }), getIngredients);
+// Use the updated controller functions with NextFunction
+router.get('/', validateRequest({ query: getIngredientsQuerySchema }), getAllIngredients);
 router.get('/:id', getIngredientById);
 router.post('/', validateRequest({ body: createIngredientSchema }), createIngredient);
 router.put('/:id', validateRequest({ body: updateIngredientSchema }), updateIngredient);

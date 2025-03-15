@@ -1,4 +1,4 @@
-import { Request, Response } from "express"
+import { Request, Response, NextFunction } from "express"
 import { PrismaClient } from "@prisma/client"
 import {
     CreateIngredientInput,
@@ -11,7 +11,7 @@ const prisma = new PrismaClient()
 /**
  * Get all ingredients with optional filtering
  */
-export const getAllIngredients = async (req: Request, res: Response) => {
+export const getAllIngredients = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const filters = req.query as unknown as IngredientFilters
 
@@ -19,11 +19,11 @@ export const getAllIngredients = async (req: Request, res: Response) => {
         const where: any = {}
 
         if (filters.categoryId) {
-            where.category_id = parseInt(filters.categoryId.toString())
+            where.categoryId = parseInt(filters.categoryId.toString())
         }
 
         if (filters.subcategoryId) {
-            where.subcategory_id = parseInt(filters.subcategoryId.toString())
+            where.subcategoryId = parseInt(filters.subcategoryId.toString())
         }
 
         if (filters.isPerishable !== undefined) {
@@ -62,107 +62,139 @@ export const getAllIngredients = async (req: Request, res: Response) => {
             include: {
                 category: true,
                 subcategory: true,
-                default_unit: true,
-                package_unit: true,
+                defaultUnit: true,
+                packageUnit: true,
             },
             orderBy: { name: 'asc' },
         })
 
         res.json(ingredients)
     } catch (error) {
-        console.error("Error fetching ingredients:", error)
-        res.status(500).json({ error: "Failed to fetch ingredients" })
+        next(error)
     }
 }
 
 /**
  * Get a single ingredient by ID
  */
-export const getIngredientById = async (req: Request, res: Response) => {
+export const getIngredientById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { id } = req.params
 
         const ingredient = await prisma.ingredient.findUnique({
-            where: { ingredient_id: parseInt(id) },
+            where: { id: parseInt(id) },
             include: {
                 category: true,
                 subcategory: true,
-                default_unit: true,
-                package_unit: true,
+                defaultUnit: true,
+                packageUnit: true,
                 allergens: true,
                 dietaryFlags: true,
-                density_conversions: {
+                densityConversions: {
                     include: {
-                        volume_unit: true,
-                        weight_unit: true,
+                        volumeUnit: true,
+                        weightUnit: true,
                     }
                 },
             },
         })
 
         if (!ingredient) {
-            return res.status(404).json({ error: "Ingredient not found" })
+            res.status(404).json({ error: "Ingredient not found" })
+            return
         }
 
         res.json(ingredient)
     } catch (error) {
-        console.error("Error fetching ingredient:", error)
-        res.status(500).json({ error: "Failed to fetch ingredient" })
+        next(error)
     }
 }
 
 /**
  * Create a new ingredient
  */
-export const createIngredient = async (req: Request, res: Response) => {
+export const createIngredient = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const ingredientData: CreateIngredientInput = req.body
 
+        // Transform the data to match Prisma schema
+        const transformedData = {
+            name: ingredientData.name,
+            description: ingredientData.description,
+            categoryId: ingredientData.categoryId,
+            subcategoryId: ingredientData.subcategoryId,
+            defaultUnitId: ingredientData.defaultUnitId,
+            isPerishable: ingredientData.isPerishable,
+            storageType: ingredientData.storageType,
+            shelfLifeDays: ingredientData.shelfLifeDays,
+            storageInstructions: ingredientData.storageInstructions,
+            supplierInstructions: ingredientData.supplierInstructions,
+            supplierNotes: ingredientData.supplierNotes,
+            preferredSupplier: ingredientData.preferredSupplier,
+            orderLeadTimeDays: ingredientData.orderLeadTimeDays,
+            costPerUnitDollars: ingredientData.costPerUnitDollars,
+            packageSize: ingredientData.packageSize,
+            packageUnitId: ingredientData.packageUnitId,
+            isLocal: ingredientData.isLocal,
+            isOrganic: ingredientData.isOrganic,
+            isSeasonalItem: ingredientData.isSeasonalItem,
+            hasVariablePrice: ingredientData.hasVariablePrice,
+            isCommonAllergen: ingredientData.isCommonAllergen,
+            isSpecialOrder: ingredientData.isSpecialOrder
+        }
+
         const ingredient = await prisma.ingredient.create({
-            data: ingredientData,
+            data: transformedData,
+            include: {
+                category: true,
+                defaultUnit: true
+            }
         })
 
         res.status(201).json(ingredient)
     } catch (error) {
-        console.error("Error creating ingredient:", error)
-        res.status(500).json({ error: "Failed to create ingredient" })
+        next(error)
     }
 }
 
 /**
  * Update an existing ingredient
  */
-export const updateIngredient = async (req: Request, res: Response) => {
+export const updateIngredient = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { id } = req.params
         const ingredientData: UpdateIngredientInput = req.body
 
         const ingredient = await prisma.ingredient.update({
-            where: { ingredient_id: parseInt(id) },
+            where: { id: parseInt(id) },
             data: ingredientData,
+            include: {
+                category: true,
+                subcategory: true,
+                defaultUnit: true,
+                packageUnit: true,
+            }
         })
 
         res.json(ingredient)
     } catch (error) {
-        console.error("Error updating ingredient:", error)
-        res.status(500).json({ error: "Failed to update ingredient" })
+        next(error)
     }
 }
 
 /**
  * Delete an ingredient
  */
-export const deleteIngredient = async (req: Request, res: Response) => {
+export const deleteIngredient = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { id } = req.params
 
         await prisma.ingredient.delete({
-            where: { ingredient_id: parseInt(id) },
+            where: { id: parseInt(id) },
         })
 
         res.json({ message: "Ingredient deleted successfully" })
     } catch (error) {
-        console.error("Error deleting ingredient:", error)
-        res.status(500).json({ error: "Failed to delete ingredient" })
+        next(error)
     }
 }

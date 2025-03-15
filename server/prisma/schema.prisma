@@ -32,166 +32,172 @@ enum UnitType {
 }
 
 // INGREDIENT CORE MODELS
-
 model Ingredient {
-  ingredient_id        String           @id @default(cuid()) // Time-sorted identifier
+  id                   Int              @id @default(autoincrement()) @map("ingredient_id")
   name                 String
   description          String?
-  category_id          String
-  category             IngredientCategory @relation(fields: [category_id], references: [category_id])
-  subcategory_id       String?
-  subcategory          IngredientSubcategory? @relation(fields: [subcategory_id], references: [subcategory_id])
-  default_unit_id      String
-  default_unit         UnitOfMeasure    @relation("DefaultUnit", fields: [default_unit_id], references: [uom_id])
+  categoryId           Int              @map("category_id")
+  category             IngredientCategory @relation(fields: [categoryId], references: [id])
+  subcategoryId        Int?             @map("subcategory_id")
+  subcategory          IngredientSubcategory? @relation(fields: [subcategoryId], references: [id])
+  defaultUnitId        Int              @map("default_unit_id")
+  defaultUnit          UnitOfMeasure    @relation("DefaultUnit", fields: [defaultUnitId], references: [id])
   
   // Storage and shelf life
-  isPerishable         Boolean          @default(false)
-  storageType          StorageType      @default(ROOM_TEMPERATURE)
-  shelfLifeDays        Int?             // Shelf life in days
-  storageInstructions  String?
+  isPerishable         Boolean          @default(false) @map("is_perishable")
+  storageType          StorageType      @default(ROOM_TEMPERATURE) @map("storage_type")
+  shelfLifeDays        Int?             @map("shelf_life_days") // Shelf life in days
+  storageInstructions  String?          @map("storage_instructions")
   
   // Supplier information
-  supplierInstructions String?          // Instructions for ordering from suppliers
-  supplierNotes        String?          // Notes about suppliers, pricing, etc.
-  preferredSupplier    String?
-  orderLeadTimeDays    Int?             // Lead time for ordering in days
+  supplierInstructions String?          @map("supplier_instructions") // Instructions for ordering from suppliers
+  supplierNotes        String?          @map("supplier_notes") // Notes about suppliers, pricing, etc.
+  preferredSupplier    String?          @map("preferred_supplier")
+  orderLeadTimeDays    Int?             @map("order_lead_time_days") // Lead time for ordering in days
   
   // Practical attributes
-  costPerUnitDollars   Float?           // Cost per unit in dollars
-  packageSize          Float?           // Size of standard package
-  package_unit_id      String?
-  package_unit         UnitOfMeasure?   @relation("PackageUnit", fields: [package_unit_id], references: [uom_id])
+  costPerUnitDollars   Float?           @map("cost_per_unit_dollars") // Cost per unit in dollars
+  packageSize          Float?           @map("package_size") // Size of standard package
+  packageUnitId        Int?             @map("package_unit_id")
+  packageUnit          UnitOfMeasure?   @relation("PackageUnit", fields: [packageUnitId], references: [id])
   
   // Additional boolean attributes
-  isLocal              Boolean          @default(false)
-  isOrganic            Boolean          @default(false)
-  isSeasonalItem       Boolean          @default(false)
-  hasVariablePrice     Boolean          @default(false)
-  isCommonAllergen     Boolean          @default(false)
-  isSpecialOrder       Boolean          @default(false)
+  isLocal              Boolean          @default(false) @map("is_local")
+  isOrganic            Boolean          @default(false) @map("is_organic")
+  isSeasonalItem       Boolean          @default(false) @map("is_seasonal_item")
+  hasVariablePrice     Boolean          @default(false) @map("has_variable_price")
+  isCommonAllergen     Boolean          @default(false) @map("is_common_allergen")
+  isSpecialOrder       Boolean          @default(false) @map("is_special_order")
   
   // Relationships
   allergens            IngredientAllergen[]
   dietaryFlags         IngredientDietaryFlag[]
   substitutes          IngredientSubstitute[]  @relation("OriginalIngredient")
-  substitute_for       IngredientSubstitute[]  @relation("SubstituteIngredient")
-  density_conversions  IngredientDensity[]
+  substituteFor        IngredientSubstitute[]  @relation("SubstituteIngredient")
+  densityConversions   IngredientDensity[]
   
   // Tracking
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
 
-  @@index([category_id])
-  @@index([subcategory_id])
+  @@index([categoryId])
+  @@index([subcategoryId])
   @@index([name])
   @@index([isPerishable])
   @@index([storageType])
 }
 
 model IngredientCategory {
-  category_id          String        @id @default(cuid()) // Time-sorted identifier
-  name                 String        @unique
+  id                   Int              @id @default(autoincrement()) @map("category_id")
+  name                 String           @unique
   description          String?
-  storeSection         String?
-  displayOrder         Int           @default(0)
+  storeSection         String?          @map("store_section")
+  displayOrder         Int              @default(0) @map("display_order")
   
   // Relationships
   ingredients          Ingredient[]
   subcategories        IngredientSubcategory[]
+  
+  // Tracking
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
 }
 
 model IngredientSubcategory {
-  subcategory_id       String        @id @default(cuid()) // Time-sorted identifier
+  id                   Int              @id @default(autoincrement()) @map("subcategory_id")
   name                 String
   description          String?
-  category_id          String
-  category             IngredientCategory @relation(fields: [category_id], references: [category_id])
-  displayOrder         Int           @default(0)
+  categoryId           Int              @map("category_id")
+  category             IngredientCategory @relation(fields: [categoryId], references: [id])
+  displayOrder         Int              @default(0) @map("display_order")
   
   // Relationships
   ingredients          Ingredient[]
   
-  @@unique([name, category_id])
-  @@index([category_id])
+  // Tracking
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+  
+  @@unique([name, categoryId])
+  @@index([categoryId])
 }
 
 model IngredientAllergen {
-  allergen_id          String      @id @default(cuid()) // Time-sorted identifier
-  ingredient_id        String
-  ingredient           Ingredient  @relation(fields: [ingredient_id], references: [ingredient_id], onDelete: Cascade)
-  allergenName         String
+  id                   Int              @id @default(autoincrement()) @map("allergen_id")
+  ingredientId         Int              @map("ingredient_id")
+  ingredient           Ingredient       @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  allergenName         String           @map("allergen_name")
 
-  @@unique([ingredient_id, allergenName])
+  @@unique([ingredientId, allergenName])
 }
 
 model IngredientDietaryFlag {
-  dietary_flag_id      String      @id @default(cuid()) // Time-sorted identifier
-  ingredient_id        String
-  ingredient           Ingredient  @relation(fields: [ingredient_id], references: [ingredient_id], onDelete: Cascade)
-  flag                 String      // e.g., "Vegan", "Gluten-Free"
+  id                   Int              @id @default(autoincrement()) @map("dietary_flag_id")
+  ingredientId         Int              @map("ingredient_id")
+  ingredient           Ingredient       @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  flag                 String           // e.g., "Vegan", "Gluten-Free"
 
-  @@unique([ingredient_id, flag])
+  @@unique([ingredientId, flag])
 }
 
 model IngredientSubstitute {
-  substitute_id        String      @id @default(cuid()) // Time-sorted identifier
-  ingredient_id        String
-  ingredient           Ingredient  @relation("OriginalIngredient", fields: [ingredient_id], references: [ingredient_id])
-  substitute_ingredient_id String
-  substitute_ingredient Ingredient  @relation("SubstituteIngredient", fields: [substitute_ingredient_id], references: [ingredient_id])
-  conversionRatio      Float       @default(1)
+  id                   Int              @id @default(autoincrement()) @map("substitute_id")
+  ingredientId         Int              @map("ingredient_id")
+  ingredient           Ingredient       @relation("OriginalIngredient", fields: [ingredientId], references: [id])
+  substituteIngredientId Int            @map("substitute_ingredient_id")
+  substituteIngredient Ingredient       @relation("SubstituteIngredient", fields: [substituteIngredientId], references: [id])
+  conversionRatio      Float            @default(1) @map("conversion_ratio")
   notes                String?
 
-  @@unique([ingredient_id, substitute_ingredient_id])
+  @@unique([ingredientId, substituteIngredientId])
 }
 
 // UNIT MEASUREMENT SYSTEM
-
 model UnitOfMeasure {
-  uom_id               String              @id @default(cuid()) // Time-sorted identifier
-  uom_name             String              @unique          // e.g., "Cup", "Tablespoon", "Gram"
-  uom_abbreviation     String              @unique          // e.g., "cup", "tbsp", "g"
-  uom_system           MeasurementSystem   // METRIC or US
-  uom_type             UnitType            // VOLUME, WEIGHT, COUNT, LENGTH
+  id                   Int              @id @default(autoincrement()) @map("uom_id")
+  name                 String           @unique @map("uom_name")
+  abbreviation         String           @unique @map("uom_abbreviation")
+  system               MeasurementSystem @map("uom_system")
+  type                 UnitType         @map("uom_type")
   
   // Base unit conversion (for same unit type)
-  uom_base_unit_id     String?
-  uom_base_unit        UnitOfMeasure?      @relation("UnitConversion", fields: [uom_base_unit_id], references: [uom_id])
-  uom_derived_units    UnitOfMeasure[]     @relation("UnitConversion")
-  uom_conversionFactor Float               @default(1)      // Multiply by this to get base unit
+  baseUnitId           Int?             @map("uom_base_unit_id")
+  baseUnit             UnitOfMeasure?   @relation("UnitConversion", fields: [baseUnitId], references: [id])
+  derivedUnits         UnitOfMeasure[]  @relation("UnitConversion")
+  conversionFactor     Float            @default(1) @map("uom_conversion_factor")
   
   // Cross-system counterpart (e.g., cups → milliliters)
-  uom_equivalent_id    String?
-  uom_equivalent_unit  UnitOfMeasure?      @relation("SystemEquivalent", fields: [uom_equivalent_id], references: [uom_id])
-  uom_reverse_equivalents UnitOfMeasure[]  @relation("SystemEquivalent")
-  uom_equivalentFactor Float?              // Conversion factor to equivalent unit
+  equivalentUnitId     Int?             @map("uom_equivalent_id")
+  equivalentUnit       UnitOfMeasure?   @relation("SystemEquivalent", fields: [equivalentUnitId], references: [id])
+  reverseEquivalents   UnitOfMeasure[]  @relation("SystemEquivalent")
+  equivalentFactor     Float?           @map("uom_equivalent_factor")
   
   // Relationships
-  default_for          Ingredient[]        @relation("DefaultUnit")
-  package_for          Ingredient[]        @relation("PackageUnit")
+  defaultFor           Ingredient[]     @relation("DefaultUnit")
+  packageFor           Ingredient[]     @relation("PackageUnit")
   
   // Volume-weight conversions
-  volume_densities     IngredientDensity[] @relation("VolumeUnit")
-  weight_densities     IngredientDensity[] @relation("WeightUnit")
+  volumeDensities      IngredientDensity[] @relation("VolumeUnit")
+  weightDensities      IngredientDensity[] @relation("WeightUnit")
   
   // Tracking
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
   
-  @@index([uom_system])
-  @@index([uom_type])
+  @@index([system])
+  @@index([type])
 }
 
 model IngredientDensity {
-  density_id           String              @id @default(cuid()) // Time-sorted identifier
-  ingredient_id        String
-  ingredient           Ingredient          @relation(fields: [ingredient_id], references: [ingredient_id])
-  volume_unit_id       String
-  volume_unit          UnitOfMeasure       @relation("VolumeUnit", fields: [volume_unit_id], references: [uom_id])
-  weight_unit_id       String
-  weight_unit          UnitOfMeasure       @relation("WeightUnit", fields: [weight_unit_id], references: [uom_id])
-  conversionFactor     Float               // e.g., 1 cup of flour = 120 grams
+  id                   Int              @id @default(autoincrement()) @map("density_id")
+  ingredientId         Int              @map("ingredient_id")
+  ingredient           Ingredient       @relation(fields: [ingredientId], references: [id])
+  volumeUnitId         Int              @map("volume_unit_id")
+  volumeUnit           UnitOfMeasure    @relation("VolumeUnit", fields: [volumeUnitId], references: [id])
+  weightUnitId         Int              @map("weight_unit_id")
+  weightUnit           UnitOfMeasure    @relation("WeightUnit", fields: [weightUnitId], references: [id])
+  conversionFactor     Float            @map("conversion_factor") // e.g., 1 cup of flour = 120 grams
   notes                String?
-  
-  @@unique([ingredient_id, volume_unit_id, weight_unit_id])
+
+  @@unique([ingredientId, volumeUnitId, weightUnitId])
 }

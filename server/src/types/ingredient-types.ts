@@ -22,211 +22,231 @@ export enum UnitType {
 }
 
 export interface Ingredient {
-    ingredient_id: number
-    name: string
-    description?: string
-    category_id: number
-    category?: IngredientCategory
-    subcategory_id?: number
-    subcategory?: IngredientSubcategory
-    default_unit_id: number
-    default_unit?: UnitOfMeasure
+    id: number;
+    name: string;
+    description?: string | null;
+    categoryId: number;
+    category?: IngredientCategory;
+    subcategoryId?: number | null;
+    subcategory?: IngredientSubcategory | null;
+    defaultUnitId: number;
+    defaultUnit?: UnitOfMeasure;
 
     // Storage and shelf life
-    isPerishable: boolean
-    storageType: StorageType
-    shelfLifeDays?: number
-    storageInstructions?: string
+    isPerishable: boolean;
+    storageType: StorageType;
+    shelfLifeDays?: number | null;
+    storageInstructions?: string | null;
 
     // Supplier information
-    supplierInstructions?: string
-    supplierNotes?: string
-    preferredSupplier?: string
-    orderLeadTimeDays?: number
+    supplierInstructions?: string | null;
+    supplierNotes?: string | null;
+    preferredSupplier?: string | null;
+    orderLeadTimeDays?: number | null;
 
     // Practical attributes
-    costPerUnitDollars?: number
-    packageSize?: number
-    package_unit_id?: number
-    package_unit?: UnitOfMeasure
+    costPerUnitDollars?: number | null;
+    packageSize?: number | null;
+    packageUnitId?: number | null;
+    packageUnit?: UnitOfMeasure | null;
 
     // Additional boolean attributes
-    isLocal: boolean
-    isOrganic: boolean
-    isSeasonalItem: boolean
-    hasVariablePrice: boolean
-    isCommonAllergen: boolean
-    isSpecialOrder: boolean
+    isLocal: boolean;
+    isOrganic: boolean;
+    isSeasonalItem: boolean;
+    hasVariablePrice: boolean;
+    isCommonAllergen: boolean;
+    isSpecialOrder: boolean;
 
     // Related entities
-    allergens?: IngredientAllergen[]
-    dietaryFlags?: IngredientDietaryFlag[]
-    substitutes?: IngredientSubstitute[]
-    density_conversions?: IngredientDensity[]
+    allergens?: IngredientAllergen[];
+    dietaryFlags?: IngredientDietaryFlag[];
+    substitutes?: IngredientSubstitute[];
+    densityConversions?: IngredientDensity[];
 
     // Tracking
-    createdAt: Date
-    updatedAt: Date
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 export interface IngredientCategory {
-    category_id: number
-    name: string
-    description?: string
-    storeSection?: string
-    displayOrder: number
+    id: number;
+    name: string;
+    description?: string | null;
+    storeSection?: string | null;
+    displayOrder: number;
+
+    // Relationships
+    ingredients?: Ingredient[];
+    subcategories?: IngredientSubcategory[];
+
+    // Tracking
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 export interface IngredientSubcategory {
-    subcategory_id: number
-    name: string
-    description?: string
-    category_id: number
-    displayOrder: number
+    id: number;
+    name: string;
+    description?: string | null;
+    categoryId: number;
+    category?: IngredientCategory;
+    displayOrder: number;
+
+    // Relationships
+    ingredients?: Ingredient[];
+
+    // Tracking
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 export interface IngredientAllergen {
-    allergen_id: number
-    ingredient_id: number
-    allergenName: string
+    id: number;
+    ingredientId: number;
+    ingredient?: Ingredient;
+    allergenName: string;
 }
 
 export interface IngredientDietaryFlag {
-    dietary_flag_id: number
-    ingredient_id: number
-    flag: string
+    id: number;
+    ingredientId: number;
+    ingredient?: Ingredient;
+    flag: string;
 }
 
 export interface IngredientSubstitute {
-    substitute_id: number
-    ingredient_id: number
-    substitute_ingredient_id: number
-    substitute_ingredient?: Ingredient
-    conversionRatio: number
-    notes?: string
+    id: number;
+    ingredientId: number;
+    ingredient?: Ingredient;
+    substituteIngredientId: number;
+    substituteIngredient?: Ingredient;
+    conversionRatio: number;
+    notes?: string | null;
 }
 
 export interface UnitOfMeasure {
-    uom_id: number
-    uom_name: string
-    uom_abbreviation: string
-    uom_system: MeasurementSystem
-    uom_type: UnitType
+    id: number;
+    name: string;
+    abbreviation: string;
+    system: MeasurementSystem;
+    type: UnitType;
 
     // Base unit conversion
-    uom_base_unit_id?: number
-    uom_base_unit?: UnitOfMeasure
-    uom_conversionFactor: number
+    baseUnitId?: number | null;
+    baseUnit?: UnitOfMeasure | null;
+    conversionFactor: number;
 
     // Cross-system equivalent
-    uom_equivalent_id?: number
-    uom_equivalent_unit?: UnitOfMeasure
-    uom_equivalentFactor?: number
+    equivalentUnitId?: number | null;
+    equivalentUnit?: UnitOfMeasure | null;
+    equivalentFactor?: number | null;
 
     // Tracking
-    createdAt: Date
-    updatedAt: Date
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 export interface IngredientDensity {
-    density_id: number
-    ingredient_id: number
-    volume_unit_id: number
-    volume_unit?: UnitOfMeasure
-    weight_unit_id: number
-    weight_unit?: UnitOfMeasure
-    conversionFactor: number
-    notes?: string
+    id: number;
+    ingredientId: number;
+    ingredient?: Ingredient;
+    volumeUnitId: number;
+    volumeUnit?: UnitOfMeasure;
+    weightUnitId: number;
+    weightUnit?: UnitOfMeasure;
+    conversionFactor: number;
+    notes?: string | null;
 }
 
 /**
  * Utility type for unit conversion requests
  */
 export interface UnitConversionRequest {
-    quantity: number
-    fromUnitId: number
-    toUnitId: number
-    ingredientId?: number // Only needed for volume-to-weight or weight-to-volume conversions
+    quantity: number;
+    fromUnitId: number;
+    toUnitId: number;
+    ingredientId?: number; // Only needed for volume-to-weight or weight-to-volume conversions
 }
 
 /**
  * Response for successful unit conversion
  */
 export interface UnitConversionResult {
-    originalQuantity: number
-    originalUnit: string
-    convertedQuantity: number
-    convertedUnit: string
-    conversionPath: string // Description of how conversion was performed
+    originalQuantity: number;
+    originalUnit: string;
+    convertedQuantity: number;
+    convertedUnit: string;
+    conversionPath: string; // Description of how conversion was performed
 }
 
 /**
  * Interface for ingredient creation data
  */
 export interface CreateIngredientInput {
-    name: string
-    description?: string
-    category_id: number
-    subcategory_id?: number
-    default_unit_id: number
-    isPerishable?: boolean
-    storageType?: StorageType
-    shelfLifeDays?: number
-    storageInstructions?: string
-    supplierInstructions?: string
-    supplierNotes?: string
-    preferredSupplier?: string
-    orderLeadTimeDays?: number
-    costPerUnitDollars?: number
-    packageSize?: number
-    package_unit_id?: number
-    isLocal?: boolean
-    isOrganic?: boolean
-    isSeasonalItem?: boolean
-    hasVariablePrice?: boolean
-    isCommonAllergen?: boolean
-    isSpecialOrder?: boolean
+    name: string;
+    description?: string | null;
+    categoryId: number;
+    subcategoryId?: number | null;
+    defaultUnitId: number;
+    isPerishable?: boolean;
+    storageType?: StorageType;
+    shelfLifeDays?: number | null;
+    storageInstructions?: string | null;
+    supplierInstructions?: string | null;
+    supplierNotes?: string | null;
+    preferredSupplier?: string | null;
+    orderLeadTimeDays?: number | null;
+    costPerUnitDollars?: number | null;
+    packageSize?: number | null;
+    packageUnitId?: number | null;
+    isLocal?: boolean;
+    isOrganic?: boolean;
+    isSeasonalItem?: boolean;
+    hasVariablePrice?: boolean;
+    isCommonAllergen?: boolean;
+    isSpecialOrder?: boolean;
 }
 
 /**
  * Interface for updating an ingredient
  */
 export interface UpdateIngredientInput {
-    name?: string
-    description?: string
-    category_id?: number
-    subcategory_id?: number
-    default_unit_id?: number
-    isPerishable?: boolean
-    storageType?: StorageType
-    shelfLifeDays?: number | null
-    storageInstructions?: string | null
-    supplierInstructions?: string | null
-    supplierNotes?: string | null
-    preferredSupplier?: string | null
-    orderLeadTimeDays?: number | null
-    costPerUnitDollars?: number | null
-    packageSize?: number | null
-    package_unit_id?: number | null
-    isLocal?: boolean
-    isOrganic?: boolean
-    isSeasonalItem?: boolean
-    hasVariablePrice?: boolean
-    isCommonAllergen?: boolean
-    isSpecialOrder?: boolean
+    name?: string;
+    description?: string | null;
+    categoryId?: number;
+    subcategoryId?: number | null;
+    defaultUnitId?: number;
+    isPerishable?: boolean;
+    storageType?: StorageType;
+    shelfLifeDays?: number | null;
+    storageInstructions?: string | null;
+    supplierInstructions?: string | null;
+    supplierNotes?: string | null;
+    preferredSupplier?: string | null;
+    orderLeadTimeDays?: number | null;
+    costPerUnitDollars?: number | null;
+    packageSize?: number | null;
+    packageUnitId?: number | null;
+    isLocal?: boolean;
+    isOrganic?: boolean;
+    isSeasonalItem?: boolean;
+    hasVariablePrice?: boolean;
+    isCommonAllergen?: boolean;
+    isSpecialOrder?: boolean;
 }
 
 /**
  * Interface for querying ingredients with filters
  */
 export interface IngredientFilters {
-    categoryId?: number
-    subcategoryId?: number
-    isPerishable?: boolean
-    storageType?: StorageType
-    isLocal?: boolean
-    isOrganic?: boolean
-    isSeasonalItem?: boolean
-    isCommonAllergen?: boolean
-    search?: string // For searching by name or description
+    categoryId?: string;
+    subcategoryId?: string;
+    isPerishable?: string;
+    storageType?: StorageType;
+    isLocal?: string;
+    isOrganic?: string;
+    isSeasonalItem?: string;
+    isCommonAllergen?: string;
+    search?: string; // For searching by name or description
 }
