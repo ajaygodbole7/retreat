@@ -1,0 +1,197 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum StorageType {
+  ROOM_TEMPERATURE
+  REFRIGERATED
+  FROZEN
+  DRY_STORAGE
+  COOL_DARK
+}
+
+enum MeasurementSystem {
+  METRIC
+  US
+}
+
+enum UnitType {
+  VOLUME
+  WEIGHT
+  COUNT
+  LENGTH
+  TEMPERATURE
+}
+
+// INGREDIENT CORE MODELS
+
+model Ingredient {
+  ingredient_id        String           @id @default(cuid()) // Time-sorted identifier
+  name                 String
+  description          String?
+  category_id          String
+  category             IngredientCategory @relation(fields: [category_id], references: [category_id])
+  subcategory_id       String?
+  subcategory          IngredientSubcategory? @relation(fields: [subcategory_id], references: [subcategory_id])
+  default_unit_id      String
+  default_unit         UnitOfMeasure    @relation("DefaultUnit", fields: [default_unit_id], references: [uom_id])
+  
+  // Storage and shelf life
+  isPerishable         Boolean          @default(false)
+  storageType          StorageType      @default(ROOM_TEMPERATURE)
+  shelfLifeDays        Int?             // Shelf life in days
+  storageInstructions  String?
+  
+  // Supplier information
+  supplierInstructions String?          // Instructions for ordering from suppliers
+  supplierNotes        String?          // Notes about suppliers, pricing, etc.
+  preferredSupplier    String?
+  orderLeadTimeDays    Int?             // Lead time for ordering in days
+  
+  // Practical attributes
+  costPerUnitDollars   Float?           // Cost per unit in dollars
+  packageSize          Float?           // Size of standard package
+  package_unit_id      String?
+  package_unit         UnitOfMeasure?   @relation("PackageUnit", fields: [package_unit_id], references: [uom_id])
+  
+  // Additional boolean attributes
+  isLocal              Boolean          @default(false)
+  isOrganic            Boolean          @default(false)
+  isSeasonalItem       Boolean          @default(false)
+  hasVariablePrice     Boolean          @default(false)
+  isCommonAllergen     Boolean          @default(false)
+  isSpecialOrder       Boolean          @default(false)
+  
+  // Relationships
+  allergens            IngredientAllergen[]
+  dietaryFlags         IngredientDietaryFlag[]
+  substitutes          IngredientSubstitute[]  @relation("OriginalIngredient")
+  substitute_for       IngredientSubstitute[]  @relation("SubstituteIngredient")
+  density_conversions  IngredientDensity[]
+  
+  // Tracking
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@index([category_id])
+  @@index([subcategory_id])
+  @@index([name])
+  @@index([isPerishable])
+  @@index([storageType])
+}
+
+model IngredientCategory {
+  category_id          String        @id @default(cuid()) // Time-sorted identifier
+  name                 String        @unique
+  description          String?
+  storeSection         String?
+  displayOrder         Int           @default(0)
+  
+  // Relationships
+  ingredients          Ingredient[]
+  subcategories        IngredientSubcategory[]
+}
+
+model IngredientSubcategory {
+  subcategory_id       String        @id @default(cuid()) // Time-sorted identifier
+  name                 String
+  description          String?
+  category_id          String
+  category             IngredientCategory @relation(fields: [category_id], references: [category_id])
+  displayOrder         Int           @default(0)
+  
+  // Relationships
+  ingredients          Ingredient[]
+  
+  @@unique([name, category_id])
+  @@index([category_id])
+}
+
+model IngredientAllergen {
+  allergen_id          String      @id @default(cuid()) // Time-sorted identifier
+  ingredient_id        String
+  ingredient           Ingredient  @relation(fields: [ingredient_id], references: [ingredient_id], onDelete: Cascade)
+  allergenName         String
+
+  @@unique([ingredient_id, allergenName])
+}
+
+model IngredientDietaryFlag {
+  dietary_flag_id      String      @id @default(cuid()) // Time-sorted identifier
+  ingredient_id        String
+  ingredient           Ingredient  @relation(fields: [ingredient_id], references: [ingredient_id], onDelete: Cascade)
+  flag                 String      // e.g., "Vegan", "Gluten-Free"
+
+  @@unique([ingredient_id, flag])
+}
+
+model IngredientSubstitute {
+  substitute_id        String      @id @default(cuid()) // Time-sorted identifier
+  ingredient_id        String
+  ingredient           Ingredient  @relation("OriginalIngredient", fields: [ingredient_id], references: [ingredient_id])
+  substitute_ingredient_id String
+  substitute_ingredient Ingredient  @relation("SubstituteIngredient", fields: [substitute_ingredient_id], references: [ingredient_id])
+  conversionRatio      Float       @default(1)
+  notes                String?
+
+  @@unique([ingredient_id, substitute_ingredient_id])
+}
+
+// UNIT MEASUREMENT SYSTEM
+
+model UnitOfMeasure {
+  uom_id               String              @id @default(cuid()) // Time-sorted identifier
+  uom_name             String              @unique          // e.g., "Cup", "Tablespoon", "Gram"
+  uom_abbreviation     String              @unique          // e.g., "cup", "tbsp", "g"
+  uom_system           MeasurementSystem   // METRIC or US
+  uom_type             UnitType            // VOLUME, WEIGHT, COUNT, LENGTH
+  
+  // Base unit conversion (for same unit type)
+  uom_base_unit_id     String?
+  uom_base_unit        UnitOfMeasure?      @relation("UnitConversion", fields: [uom_base_unit_id], references: [uom_id])
+  uom_derived_units    UnitOfMeasure[]     @relation("UnitConversion")
+  uom_conversionFactor Float               @default(1)      // Multiply by this to get base unit
+  
+  // Cross-system counterpart (e.g., cups → milliliters)
+  uom_equivalent_id    String?
+  uom_equivalent_unit  UnitOfMeasure?      @relation("SystemEquivalent", fields: [uom_equivalent_id], references: [uom_id])
+  uom_reverse_equivalents UnitOfMeasure[]  @relation("SystemEquivalent")
+  uom_equivalentFactor Float?              // Conversion factor to equivalent unit
+  
+  // Relationships
+  default_for          Ingredient[]        @relation("DefaultUnit")
+  package_for          Ingredient[]        @relation("PackageUnit")
+  
+  // Volume-weight conversions
+  volume_densities     IngredientDensity[] @relation("VolumeUnit")
+  weight_densities     IngredientDensity[] @relation("WeightUnit")
+  
+  // Tracking
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  
+  @@index([uom_system])
+  @@index([uom_type])
+}
+
+model IngredientDensity {
+  density_id           String              @id @default(cuid()) // Time-sorted identifier
+  ingredient_id        String
+  ingredient           Ingredient          @relation(fields: [ingredient_id], references: [ingredient_id])
+  volume_unit_id       String
+  volume_unit          UnitOfMeasure       @relation("VolumeUnit", fields: [volume_unit_id], references: [uom_id])
+  weight_unit_id       String
+  weight_unit          UnitOfMeasure       @relation("WeightUnit", fields: [weight_unit_id], references: [uom_id])
+  conversionFactor     Float               // e.g., 1 cup of flour = 120 grams
+  notes                String?
+  
+  @@unique([ingredient_id, volume_unit_id, weight_unit_id])
+}
