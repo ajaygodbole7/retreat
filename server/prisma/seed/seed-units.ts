@@ -1,5 +1,4 @@
-import { PrismaClient } from "@prisma/client"
-import { MeasurementSystem, UnitType } from "./types"
+import { PrismaClient, UnitOfMeasure, MeasurementSystem, UnitType } from "@prisma/client"
 
 const prisma = new PrismaClient()
 
@@ -13,298 +12,282 @@ export async function seedUnits() {
     const baseUnits = [
         // Volume base units
         {
-            uom_name: "Milliliter",
-            uom_abbreviation: "ml",
-            uom_system: MeasurementSystem.METRIC,
-            uom_type: UnitType.VOLUME,
-            uom_conversionFactor: 1,
+            name: "Milliliter",
+            abbreviation: "ml",
+            system: MeasurementSystem.METRIC,
+            type: UnitType.VOLUME,
+            conversionFactor: 1,
         },
         {
-            uom_name: "Teaspoon",
-            uom_abbreviation: "tsp",
-            uom_system: MeasurementSystem.US,
-            uom_type: UnitType.VOLUME,
-            uom_conversionFactor: 1,
+            name: "Teaspoon",
+            abbreviation: "tsp",
+            system: MeasurementSystem.US,
+            type: UnitType.VOLUME,
+            conversionFactor: 1,
         },
 
         // Weight base units
         {
-            uom_name: "Gram",
-            uom_abbreviation: "g",
-            uom_system: MeasurementSystem.METRIC,
-            uom_type: UnitType.WEIGHT,
-            uom_conversionFactor: 1,
+            name: "Gram",
+            abbreviation: "g",
+            system: MeasurementSystem.METRIC,
+            type: UnitType.WEIGHT,
+            conversionFactor: 1,
         },
         {
-            uom_name: "Ounce",
-            uom_abbreviation: "oz",
-            uom_system: MeasurementSystem.US,
-            uom_type: UnitType.WEIGHT,
-            uom_conversionFactor: 1,
+            name: "Ounce",
+            abbreviation: "oz",
+            system: MeasurementSystem.US,
+            type: UnitType.WEIGHT,
+            conversionFactor: 1,
         },
 
         // Count base units
         {
-            uom_name: "Each",
-            uom_abbreviation: "ea",
-            uom_system: MeasurementSystem.METRIC,
-            uom_type: UnitType.COUNT,
-            uom_conversionFactor: 1,
+            name: "Each",
+            abbreviation: "ea",
+            system: MeasurementSystem.METRIC,
+            type: UnitType.COUNT,
+            conversionFactor: 1,
         },
         {
-            uom_name: "Each",
-            uom_abbreviation: "ea",
-            uom_system: MeasurementSystem.US,
-            uom_type: UnitType.COUNT,
-            uom_conversionFactor: 1,
+            name: "Each",
+            abbreviation: "ea",
+            system: MeasurementSystem.US,
+            type: UnitType.COUNT,
+            conversionFactor: 1,
         },
 
         // Add units from CSV
         {
-            uom_name: "Piece",
-            uom_abbreviation: "pc",
-            uom_system: MeasurementSystem.METRIC,
-            uom_type: UnitType.COUNT,
-            uom_conversionFactor: 1,
+            name: "Piece",
+            abbreviation: "pc",
+            system: MeasurementSystem.METRIC,
+            type: UnitType.COUNT,
+            conversionFactor: 1,
         },
         {
-            uom_name: "Piece",
-            uom_abbreviation: "pc",
-            uom_system: MeasurementSystem.US,
-            uom_type: UnitType.COUNT,
-            uom_conversionFactor: 1,
+            name: "Piece",
+            abbreviation: "pc",
+            system: MeasurementSystem.US,
+            type: UnitType.COUNT,
+            conversionFactor: 1,
         },
     ]
 
     // Create base units and store them in a map
-    const baseUnitMap = {}
+    const baseUnitMap: Record<string, UnitOfMeasure> = {}
 
     for (const unitData of baseUnits) {
-        // Check if unit already exists
-        let unit = await prisma.unitOfMeasure.findFirst({
-            where: {
-                uom_name: unitData.uom_name,
-                uom_system: unitData.uom_system,
-                uom_type: unitData.uom_type,
-            },
-        })
+        try {
+            // Use upsert to create or update
+            const unit = await prisma.unitOfMeasure.upsert({
+                where: {
+                    name: unitData.name,
+                },
+                update: unitData,
+                create: unitData,
+            })
 
-        if (!unit) {
-            unit = await prisma.unitOfMeasure.create({
-                data: unitData,
-            })
-        } else {
-            // Update existing unit
-            unit = await prisma.unitOfMeasure.update({
-                where: { uom_id: unit.uom_id },
-                data: unitData,
-            })
+            // Use composite key for map (system:type)
+            const key = `${unit.system}:${unit.type}`
+            baseUnitMap[key] = unit
+        } catch (error) {
+            console.error(`Error upserting base unit ${unitData.name}:`, error)
         }
-
-        // Use composite key for map (system:type)
-        const key = `${unit.uom_system}:${unit.uom_type}`
-        baseUnitMap[key] = unit
     }
 
     // Define derived units for each base unit
     const derivedUnits = [
         // Metric volume units
         {
-            uom_name: "Liter",
-            uom_abbreviation: "L",
-            uom_system: MeasurementSystem.METRIC,
-            uom_type: UnitType.VOLUME,
+            name: "Liter",
+            abbreviation: "L",
+            system: MeasurementSystem.METRIC,
+            type: UnitType.VOLUME,
             base_key: `${MeasurementSystem.METRIC}:${UnitType.VOLUME}`,
-            uom_conversionFactor: 1000, // 1 L = 1000 ml
+            conversionFactor: 1000, // 1 L = 1000 ml
         },
         {
-            uom_name: "Deciliter",
-            uom_abbreviation: "dl",
-            uom_system: MeasurementSystem.METRIC,
-            uom_type: UnitType.VOLUME,
+            name: "Deciliter",
+            abbreviation: "dl",
+            system: MeasurementSystem.METRIC,
+            type: UnitType.VOLUME,
             base_key: `${MeasurementSystem.METRIC}:${UnitType.VOLUME}`,
-            uom_conversionFactor: 100, // 1 dl = 100 ml
+            conversionFactor: 100, // 1 dl = 100 ml
         },
         {
-            uom_name: "Centiliter",
-            uom_abbreviation: "cl",
-            uom_system: MeasurementSystem.METRIC,
-            uom_type: UnitType.VOLUME,
+            name: "Centiliter",
+            abbreviation: "cl",
+            system: MeasurementSystem.METRIC,
+            type: UnitType.VOLUME,
             base_key: `${MeasurementSystem.METRIC}:${UnitType.VOLUME}`,
-            uom_conversionFactor: 10, // 1 cl = 10 ml
+            conversionFactor: 10, // 1 cl = 10 ml
         },
 
         // US volume units
         {
-            uom_name: "Tablespoon",
-            uom_abbreviation: "tbsp",
-            uom_system: MeasurementSystem.US,
-            uom_type: UnitType.VOLUME,
+            name: "Tablespoon",
+            abbreviation: "tbsp",
+            system: MeasurementSystem.US,
+            type: UnitType.VOLUME,
             base_key: `${MeasurementSystem.US}:${UnitType.VOLUME}`,
-            uom_conversionFactor: 3, // 1 tbsp = 3 tsp
+            conversionFactor: 3, // 1 tbsp = 3 tsp
         },
         {
-            uom_name: "Fluid Ounce",
-            uom_abbreviation: "fl oz",
-            uom_system: MeasurementSystem.US,
-            uom_type: UnitType.VOLUME,
+            name: "Fluid Ounce",
+            abbreviation: "fl oz",
+            system: MeasurementSystem.US,
+            type: UnitType.VOLUME,
             base_key: `${MeasurementSystem.US}:${UnitType.VOLUME}`,
-            uom_conversionFactor: 6, // 1 fl oz = 6 tsp
+            conversionFactor: 6, // 1 fl oz = 6 tsp
         },
         {
-            uom_name: "Cup",
-            uom_abbreviation: "cup",
-            uom_system: MeasurementSystem.US,
-            uom_type: UnitType.VOLUME,
+            name: "Cup",
+            abbreviation: "cup",
+            system: MeasurementSystem.US,
+            type: UnitType.VOLUME,
             base_key: `${MeasurementSystem.US}:${UnitType.VOLUME}`,
-            uom_conversionFactor: 48, // 1 cup = 48 tsp
+            conversionFactor: 48, // 1 cup = 48 tsp
         },
         {
-            uom_name: "Pint",
-            uom_abbreviation: "pt",
-            uom_system: MeasurementSystem.US,
-            uom_type: UnitType.VOLUME,
+            name: "Pint",
+            abbreviation: "pt",
+            system: MeasurementSystem.US,
+            type: UnitType.VOLUME,
             base_key: `${MeasurementSystem.US}:${UnitType.VOLUME}`,
-            uom_conversionFactor: 96, // 1 pint = 96 tsp
+            conversionFactor: 96, // 1 pint = 96 tsp
         },
         {
-            uom_name: "Quart",
-            uom_abbreviation: "qt",
-            uom_system: MeasurementSystem.US,
-            uom_type: UnitType.VOLUME,
+            name: "Quart",
+            abbreviation: "qt",
+            system: MeasurementSystem.US,
+            type: UnitType.VOLUME,
             base_key: `${MeasurementSystem.US}:${UnitType.VOLUME}`,
-            uom_conversionFactor: 192, // 1 quart = 192 tsp
+            conversionFactor: 192, // 1 quart = 192 tsp
         },
         {
-            uom_name: "Gallon",
-            uom_abbreviation: "gal",
-            uom_system: MeasurementSystem.US,
-            uom_type: UnitType.VOLUME,
+            name: "Gallon",
+            abbreviation: "gal",
+            system: MeasurementSystem.US,
+            type: UnitType.VOLUME,
             base_key: `${MeasurementSystem.US}:${UnitType.VOLUME}`,
-            uom_conversionFactor: 768, // 1 gallon = 768 tsp
+            conversionFactor: 768, // 1 gallon = 768 tsp
         },
 
         // Metric weight units
         {
-            uom_name: "Kilogram",
-            uom_abbreviation: "kg",
-            uom_system: MeasurementSystem.METRIC,
-            uom_type: UnitType.WEIGHT,
+            name: "Kilogram",
+            abbreviation: "kg",
+            system: MeasurementSystem.METRIC,
+            type: UnitType.WEIGHT,
             base_key: `${MeasurementSystem.METRIC}:${UnitType.WEIGHT}`,
-            uom_conversionFactor: 1000, // 1 kg = 1000 g
+            conversionFactor: 1000, // 1 kg = 1000 g
         },
         {
-            uom_name: "Milligram",
-            uom_abbreviation: "mg",
-            uom_system: MeasurementSystem.METRIC,
-            uom_type: UnitType.WEIGHT,
+            name: "Milligram",
+            abbreviation: "mg",
+            system: MeasurementSystem.METRIC,
+            type: UnitType.WEIGHT,
             base_key: `${MeasurementSystem.METRIC}:${UnitType.WEIGHT}`,
-            uom_conversionFactor: 0.001, // 1 mg = 0.001 g
+            conversionFactor: 0.001, // 1 mg = 0.001 g
         },
 
         // US weight units
         {
-            uom_name: "Pound",
-            uom_abbreviation: "lb",
-            uom_system: MeasurementSystem.US,
-            uom_type: UnitType.WEIGHT,
+            name: "Pound",
+            abbreviation: "lb",
+            system: MeasurementSystem.US,
+            type: UnitType.WEIGHT,
             base_key: `${MeasurementSystem.US}:${UnitType.WEIGHT}`,
-            uom_conversionFactor: 16, // 1 lb = 16 oz
+            conversionFactor: 16, // 1 lb = 16 oz
         },
 
         // Count units
         {
-            uom_name: "Dozen",
-            uom_abbreviation: "doz",
-            uom_system: MeasurementSystem.US,
-            uom_type: UnitType.COUNT,
+            name: "Dozen",
+            abbreviation: "doz",
+            system: MeasurementSystem.US,
+            type: UnitType.COUNT,
             base_key: `${MeasurementSystem.US}:${UnitType.COUNT}`,
-            uom_conversionFactor: 12, // 1 dozen = 12 each
+            conversionFactor: 12, // 1 dozen = 12 each
         },
         {
-            uom_name: "Pair",
-            uom_abbreviation: "pr",
-            uom_system: MeasurementSystem.METRIC,
-            uom_type: UnitType.COUNT,
+            name: "Pair",
+            abbreviation: "pr",
+            system: MeasurementSystem.METRIC,
+            type: UnitType.COUNT,
             base_key: `${MeasurementSystem.METRIC}:${UnitType.COUNT}`,
-            uom_conversionFactor: 2, // 1 pair = 2 each
+            conversionFactor: 2, // 1 pair = 2 each
         },
 
         // Add units from CSV
         {
-            uom_name: "Bunch",
-            uom_abbreviation: "bunch",
-            uom_system: MeasurementSystem.US,
-            uom_type: UnitType.COUNT,
+            name: "Bunch",
+            abbreviation: "bunch",
+            system: MeasurementSystem.US,
+            type: UnitType.COUNT,
             base_key: `${MeasurementSystem.US}:${UnitType.COUNT}`,
-            uom_conversionFactor: 1, // 1 bunch
+            conversionFactor: 1, // 1 bunch
         },
         {
-            uom_name: "Head",
-            uom_abbreviation: "head",
-            uom_system: MeasurementSystem.US,
-            uom_type: UnitType.COUNT,
+            name: "Head",
+            abbreviation: "head",
+            system: MeasurementSystem.US,
+            type: UnitType.COUNT,
             base_key: `${MeasurementSystem.US}:${UnitType.COUNT}`,
-            uom_conversionFactor: 1, // 1 head
+            conversionFactor: 1, // 1 head
         },
         {
-            uom_name: "Clove",
-            uom_abbreviation: "clove",
-            uom_system: MeasurementSystem.US,
-            uom_type: UnitType.COUNT,
+            name: "Clove",
+            abbreviation: "clove",
+            system: MeasurementSystem.US,
+            type: UnitType.COUNT,
             base_key: `${MeasurementSystem.US}:${UnitType.COUNT}`,
-            uom_conversionFactor: 1, // 1 clove
+            conversionFactor: 1, // 1 clove
         },
         {
-            uom_name: "Sprig",
-            uom_abbreviation: "sprig",
-            uom_system: MeasurementSystem.US,
-            uom_type: UnitType.COUNT,
+            name: "Sprig",
+            abbreviation: "sprig",
+            system: MeasurementSystem.US,
+            type: UnitType.COUNT,
             base_key: `${MeasurementSystem.US}:${UnitType.COUNT}`,
-            uom_conversionFactor: 1, // 1 sprig
+            conversionFactor: 1, // 1 sprig
         },
     ]
 
     // Create derived units
-    const derivedUnitMap = {}
+    const derivedUnitMap: Record<string, UnitOfMeasure> = {}
 
     for (const unitData of derivedUnits) {
         const { base_key, ...data } = unitData
         const baseUnit = baseUnitMap[base_key]
 
         if (!baseUnit) {
-            console.warn(`Base unit for ${base_key} not found, skipping derived unit ${unitData.uom_name}.`)
+            console.warn(`Base unit for ${base_key} not found, skipping derived unit ${unitData.name}.`)
             continue
         }
 
-        // Check if unit already exists
-        let unit = await prisma.unitOfMeasure.findFirst({
-            where: {
-                uom_name: data.uom_name,
-                uom_system: data.uom_system,
-                uom_type: data.uom_type,
-            },
-        })
+        try {
+            // Use upsert to create or update
+            const unit = await prisma.unitOfMeasure.upsert({
+                where: {
+                    name: data.name,
+                },
+                update: {
+                    ...data,
+                    baseUnitId: baseUnit.id,
+                },
+                create: {
+                    ...data,
+                    baseUnitId: baseUnit.id,
+                },
+            })
 
-        if (!unit) {
-            unit = await prisma.unitOfMeasure.create({
-                data: {
-                    ...data,
-                    uom_base_unit_id: baseUnit.uom_id,
-                },
-            })
-        } else {
-            // Update existing unit
-            unit = await prisma.unitOfMeasure.update({
-                where: { uom_id: unit.uom_id },
-                data: {
-                    ...data,
-                    uom_base_unit_id: baseUnit.uom_id,
-                },
-            })
+            derivedUnitMap[unit.name] = unit
+        } catch (error) {
+            console.error(`Error upserting derived unit ${data.name}:`, error)
         }
-
-        derivedUnitMap[unit.uom_name] = unit
     }
 
     // Define cross-system equivalents
@@ -355,14 +338,18 @@ export async function seedUnits() {
             continue
         }
 
-        // Update the from unit with its equivalent
-        await prisma.unitOfMeasure.update({
-            where: { uom_id: fromUnit.uom_id },
-            data: {
-                uom_equivalent_id: toUnit.uom_id,
-                uom_equivalentFactor: factor,
-            },
-        })
+        try {
+            // Update the from unit with its equivalent
+            await prisma.unitOfMeasure.update({
+                where: { id: fromUnit.id },
+                data: {
+                    equivalentUnitId: toUnit.id,
+                    equivalentFactor: factor,
+                },
+            })
+        } catch (error) {
+            console.error(`Error updating equivalent for ${from_name} -> ${to_name}:`, error)
+        }
     }
 
     console.log(`Seeded ${Object.keys(baseUnitMap).length} base units of measure`)

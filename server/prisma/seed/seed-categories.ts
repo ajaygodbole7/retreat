@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient, IngredientCategory, IngredientSubcategory } from "@prisma/client"
 
 const prisma = new PrismaClient()
 
@@ -57,7 +57,7 @@ export async function seedCategories() {
             description: "Fresh and dried fruits",
             storeSection: "Produce Section",
             displayOrder: 8,
-        }, 
+        },
         {
             name: "Condiments",
             description: "Sauces, spreads, and condiments",
@@ -76,7 +76,6 @@ export async function seedCategories() {
             storeSection: "Snack Aisle",
             displayOrder: 11,
         },
-
         {
             name: "Herbs",
             description: "Fresh and dried herbs",
@@ -92,7 +91,7 @@ export async function seedCategories() {
     ]
 
     // Create categories and store them in a map
-    const categoryMap = {}
+    const categoryMap: Record<string, IngredientCategory> = {}
 
     for (const categoryData of mainCategories) {
         // Check if category already exists
@@ -107,7 +106,7 @@ export async function seedCategories() {
         } else {
             // Update existing category
             category = await prisma.ingredientCategory.update({
-                where: { category_id: category.category_id },
+                where: { id: category.id },
                 data: categoryData,
             })
         }
@@ -130,7 +129,7 @@ export async function seedCategories() {
             { name: "Nut & Seed Oils", description: "Specialty oils from nuts and seeds", displayOrder: 2 },
             { name: "Plant-Based Butters", description: "Vegan butter alternatives", displayOrder: 3 },
         ],
-        Spices: [
+        "Spices (Dry)": [
             { name: "Whole Spices", description: "Unground spices", displayOrder: 1 },
             { name: "Ground Spices", description: "Ground spice powders", displayOrder: 2 },
             { name: "Spice Blends", description: "Pre-mixed spice combinations", displayOrder: 4 },
@@ -212,7 +211,7 @@ export async function seedCategories() {
     }
 
     // Create subcategories
-    const subcategoryMap = {}
+    const subcategoryMap: Record<string, IngredientSubcategory> = {}
 
     for (const [categoryName, subcategories] of Object.entries(subcategoryData)) {
         const category = categoryMap[categoryName]
@@ -227,7 +226,7 @@ export async function seedCategories() {
             let subcategory = await prisma.ingredientSubcategory.findFirst({
                 where: {
                     name: subcategoryInfo.name,
-                    category_id: category.category_id,
+                    categoryId: category.id,
                 },
             })
 
@@ -235,16 +234,16 @@ export async function seedCategories() {
                 subcategory = await prisma.ingredientSubcategory.create({
                     data: {
                         ...subcategoryInfo,
-                        category_id: category.category_id,
+                        categoryId: category.id,
                     },
                 })
             } else {
                 // Update existing subcategory
                 subcategory = await prisma.ingredientSubcategory.update({
-                    where: { subcategory_id: subcategory.subcategory_id },
+                    where: { id: subcategory.id },
                     data: {
                         ...subcategoryInfo,
-                        category_id: category.category_id,
+                        categoryId: category.id,
                     },
                 })
             }
