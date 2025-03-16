@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { UtensilsCrossed } from 'lucide-react'
+import blossomLogo from '@/assets/blossom-logo.png'
 
 export function Navbar() {
     return (
@@ -7,8 +8,15 @@ export function Navbar() {
             <div className="container mx-auto px-4 py-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <UtensilsCrossed className="h-6 w-6" />
-                        <span className="text-xl font-bold">Meal Planner</span>
+                        <div className="flex items-center">
+                            <img
+                                src={blossomLogo}
+                                alt="Blossom Foundation Logo"
+                                className="h-8 mr-2"
+                            />
+                            <UtensilsCrossed className="h-6 w-6" />
+                        </div>
+                        <span className="text-xl font-bold">Retreat Meal Planner</span>
                     </div>
                     <nav className="flex gap-6">
                         <Link
