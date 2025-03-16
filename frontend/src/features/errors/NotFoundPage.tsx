@@ -1,4 +1,7 @@
+// frontend/src/features/errors/NotFoundPage.tsx
 import { Link } from '@tanstack/react-router'
+import { Button } from '../../components/ui/button'
+import { Home } from 'lucide-react'
 
 export function NotFoundPage() {
     return (
@@ -7,11 +10,11 @@ export function NotFoundPage() {
             <p className="text-xl text-muted-foreground mb-8">
                 The page you're looking for doesn't exist.
             </p>
-            <Link
-                to="/"
-                className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90"
-            >
-                Return Home
+            <Link to="/">
+                <Button>
+                    <Home className="h-4 w-4 mr-2" />
+                    Return Home
+                </Button>
             </Link>
         </div>
     )

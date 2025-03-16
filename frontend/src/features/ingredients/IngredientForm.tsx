@@ -1,28 +1,42 @@
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from '@tanstack/react-router'
-import { Button } from '../../components/ui/button'
-import { Input } from '../../components/ui/input'
-import { Textarea } from '../../components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
-import { Checkbox } from '../../components/ui/checkbox'
-import { Label } from '../../components/ui/label'
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '../../components/ui/form'
-import { categoryApi, unitApi, ingredientApi } from '../../lib/api'
-import { Loader2 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+"use client"
+
+// frontend/src/features/ingredients/IngredientForm.tsx
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useNavigate, useRouter, useParams } from "@tanstack/react-router"
+import { Button } from "../../components/ui/button"
+import { Input } from "../../components/ui/input"
+import { Textarea } from "../../components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select"
+import { Checkbox } from "../../components/ui/checkbox"
+import {
+    Form,
+    FormControl,
+    FormDescription,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "../../components/ui/form"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card"
+import { categoryApi, unitApi, ingredientApi } from "../../lib/api"
+import { Loader2, Save, ArrowLeft } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Link } from "@tanstack/react-router"
 
 // Define the form schema using zod
 const formSchema = z.object({
-    name: z.string().min(1, 'Name is required'),
+    name: z.string().min(1, "Name is required"),
     description: z.string().optional(),
-    category_id: z.number().int().positive('Category is required'),
-    subcategory_id: z.number().int().positive('Subcategory is required').optional(),
-    default_unit_id: z.number().int().positive('Default unit is required'),
+    categoryId: z.number().int().positive("Category is required"),
+    subcategoryId: z.number().int().positive("Subcategory is required").optional().nullable(),
+    defaultUnitId: z.number().int().positive("Default unit is required"),
     isPerishable: z.boolean().default(false),
-    storageType: z.enum(['ROOM_TEMPERATURE', 'REFRIGERATED', 'FROZEN', 'DRY_STORAGE', 'COOL_DARK']).default('ROOM_TEMPERATURE'),
+    storageType: z
+        .enum(["ROOM_TEMPERATURE", "REFRIGERATED", "FROZEN", "DRY_STORAGE", "COOL_DARK"])
+        .default("ROOM_TEMPERATURE"),
     shelfLifeDays: z.number().int().positive().optional().nullable(),
     storageInstructions: z.string().optional().nullable(),
     supplierInstructions: z.string().optional().nullable(),
@@ -31,154 +45,227 @@ const formSchema = z.object({
     orderLeadTimeDays: z.number().int().positive().optional().nullable(),
     costPerUnitDollars: z.number().positive().optional().nullable(),
     packageSize: z.number().positive().optional().nullable(),
-    package_unit_id: z.number().int().positive().optional().nullable(),
+    packageUnitId: z.number().int().positive().optional().nullable(),
     isLocal: z.boolean().default(false),
     isOrganic: z.boolean().default(false),
     isSeasonalItem: z.boolean().default(false),
     hasVariablePrice: z.boolean().default(false),
     isCommonAllergen: z.boolean().default(false),
-    isSpecialOrder: z.boolean().default(false)
-});
+    isSpecialOrder: z.boolean().default(false),
+})
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = z.infer<typeof formSchema>
 
-interface IngredientFormProps {
-    ingredientId?: number;
-}
+export function IngredientForm() {
+    // Get the route params correctly from TanStack Router
+    // Check which route we're on
+    const router = useRouter()
+    const pathname = router.state.location.pathname
+    const isEditRoute = pathname.includes("/edit")
 
-export function IngredientForm({ ingredientId }: IngredientFormProps) {
-    const isEditing = !!ingredientId;
-    const navigate = useNavigate();
-    const queryClient = useQueryClient();
+    // Use the appropriate route pattern
+    const params = useParams({
+        from: isEditRoute ? "/ingredients/$ingredientId/edit" : "/ingredients/new",
+    })
+
+    // For edit route, ingredientId will exist
+    // For new route, it will be undefined
+    const ingredientId = params.ingredientId
+
+    console.log("IngredientForm - Route Params:", params)
+    console.log("IngredientForm - Route:", pathname)
+
+    const numericIngredientId = ingredientId ? Number.parseInt(ingredientId) : undefined
+    console.log("Parsed ingredientId:", numericIngredientId)
+
+    const isEditing = !!numericIngredientId && !isNaN(numericIngredientId)
+    console.log("Is editing mode:", isEditing)
+
+    const navigate = useNavigate()
+    const queryClient = useQueryClient()
 
     // Fetch categories
     const { data: categories, isLoading: categoriesLoading } = useQuery({
-        queryKey: ['categories'],
-        queryFn: () => categoryApi.getAll()
-    });
+        queryKey: ["categories"],
+        queryFn: () => categoryApi.getAll(),
+    })
 
     // Fetch units
     const { data: units, isLoading: unitsLoading } = useQuery({
-        queryKey: ['units'],
-        queryFn: () => unitApi.getAll()
-    });
+        queryKey: ["units"],
+        queryFn: () => unitApi.getAll(),
+    })
 
     // Fetch ingredient data if editing
-    const { data: ingredient, isLoading: ingredientLoading } = useQuery({
-        queryKey: ['ingredient', ingredientId],
-        queryFn: () => ingredientApi.getById(ingredientId),
-        enabled: isEditing
-    });
+    const {
+        data: ingredient,
+        isLoading: ingredientLoading,
+        isError: ingredientError,
+    } = useQuery({
+        queryKey: ["ingredient", numericIngredientId],
+        queryFn: () => (numericIngredientId ? ingredientApi.getById(numericIngredientId) : null),
+        enabled: isEditing,
+    })
+
+    // Log when ingredient data is received
+    useEffect(() => {
+        console.log("Ingredient data loaded:", ingredient)
+    }, [ingredient])
+
+    // State for selected category
+    const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
 
     // Fetch subcategories based on selected category
-    const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
-        isEditing ? ingredient?.categoryId : null
-    );
-
     const { data: subcategories, isLoading: subcategoriesLoading } = useQuery({
-        queryKey: ['subcategories', selectedCategoryId],
+        queryKey: ["subcategories", selectedCategoryId],
         queryFn: () => categoryApi.getSubcategories(selectedCategoryId),
-        enabled: !!selectedCategoryId
-    });
+        enabled: !!selectedCategoryId,
+    })
 
-    // Create form
+    // Create form with default values
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
-        defaultValues: isEditing && ingredient
-            ? {
+        defaultValues: {
+            name: "",
+            description: "",
+            categoryId: undefined,
+            subcategoryId: undefined,
+            defaultUnitId: undefined,
+            isPerishable: false,
+            storageType: "ROOM_TEMPERATURE",
+            isLocal: false,
+            isOrganic: false,
+            isSeasonalItem: false,
+            hasVariablePrice: false,
+            isCommonAllergen: false,
+            isSpecialOrder: false,
+        },
+    })
+
+    // Update form values when ingredient data is loaded
+    useEffect(() => {
+        if (isEditing && ingredient) {
+            // Set selected category for subcategory loading
+            setSelectedCategoryId(ingredient.categoryId)
+
+            // Reset form with ingredient data
+            form.reset({
                 name: ingredient.name,
-                description: ingredient.description || '',
-                category_id: ingredient.categoryId,
-                subcategory_id: ingredient.subcategoryId || undefined,
-                default_unit_id: ingredient.defaultUnitId,
+                description: ingredient.description || "",
+                categoryId: ingredient.categoryId,
+                subcategoryId: ingredient.subcategoryId || undefined,
+                defaultUnitId: ingredient.defaultUnitId,
                 isPerishable: ingredient.isPerishable,
                 storageType: ingredient.storageType,
                 shelfLifeDays: ingredient.shelfLifeDays || undefined,
-                storageInstructions: ingredient.storageInstructions || '',
-                supplierInstructions: ingredient.supplierInstructions || '',
-                supplierNotes: ingredient.supplierNotes || '',
-                preferredSupplier: ingredient.preferredSupplier || '',
+                storageInstructions: ingredient.storageInstructions || "",
+                supplierInstructions: ingredient.supplierInstructions || "",
+                supplierNotes: ingredient.supplierNotes || "",
+                preferredSupplier: ingredient.preferredSupplier || "",
                 orderLeadTimeDays: ingredient.orderLeadTimeDays || undefined,
                 costPerUnitDollars: ingredient.costPerUnitDollars || undefined,
                 packageSize: ingredient.packageSize || undefined,
-                package_unit_id: ingredient.packageUnitId || undefined,
+                packageUnitId: ingredient.packageUnitId || undefined,
                 isLocal: ingredient.isLocal,
                 isOrganic: ingredient.isOrganic,
                 isSeasonalItem: ingredient.isSeasonalItem,
                 hasVariablePrice: ingredient.hasVariablePrice,
                 isCommonAllergen: ingredient.isCommonAllergen,
-                isSpecialOrder: ingredient.isSpecialOrder
-            }
-            : {
-                name: '',
-                description: '',
-                category_id: undefined,
-                subcategory_id: undefined,
-                default_unit_id: undefined,
-                isPerishable: false,
-                storageType: 'ROOM_TEMPERATURE',
-                isLocal: false,
-                isOrganic: false,
-                isSeasonalItem: false,
-                hasVariablePrice: false,
-                isCommonAllergen: false,
-                isSpecialOrder: false
-            }
-    });
+                isSpecialOrder: ingredient.isSpecialOrder,
+            })
+        }
+    }, [isEditing, ingredient, form])
 
     // Watch category_id to update subcategories
-    const watchedCategoryId = form.watch('category_id');
+    const watchedCategoryId = form.watch("categoryId")
 
     useEffect(() => {
         if (watchedCategoryId && watchedCategoryId !== selectedCategoryId) {
-            setSelectedCategoryId(watchedCategoryId);
-            form.setValue('subcategory_id', undefined);
+            setSelectedCategoryId(watchedCategoryId)
+            form.setValue("subcategoryId", undefined)
         }
-    }, [watchedCategoryId, selectedCategoryId, form]);
+    }, [watchedCategoryId, selectedCategoryId, form])
 
     // Create or update mutation
     const mutation = useMutation({
         mutationFn: (values: FormValues) => {
-            if (isEditing) {
-                return ingredientApi.update(ingredientId, values);
+            console.log("Submitting form with values:", values)
+            if (isEditing && numericIngredientId) {
+                return ingredientApi.update(numericIngredientId, values)
             } else {
-                return ingredientApi.create(values);
+                return ingredientApi.create(values)
             }
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['ingredients'] });
-            navigate({ to: '/ingredients' });
-        }
-    });
+        onSuccess: (data) => {
+            console.log("Mutation succeeded with data:", data)
+            queryClient.invalidateQueries({ queryKey: ["ingredients"] })
+            navigate({ to: "/ingredients" })
+        },
+        onError: (error) => {
+            console.error("Mutation failed with error:", error)
+        },
+    })
 
     const onSubmit = (values: FormValues) => {
-        mutation.mutate(values);
-    };
+        mutation.mutate(values)
+    }
 
-    if (isEditing && ingredientLoading) {
+    // Handle loading state
+    if ((isEditing && ingredientLoading) || categoriesLoading || unitsLoading) {
         return (
             <div className="flex justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-        );
+        )
+    }
+
+    // Handle error state for editing an ingredient
+    if (isEditing && ingredientError) {
+        console.error("Error loading ingredient for editing")
+        return (
+            <div className="text-center py-8 text-destructive">
+                <h2 className="text-2xl font-bold mb-4">Error Loading Ingredient</h2>
+                <p>There was a problem loading the ingredient details. Please try again.</p>
+                <Button onClick={() => navigate({ to: "/ingredients" })} className="mt-4" variant="outline">
+                    <ArrowLeft className="h-4 w-4 mr-2" /> Back to Ingredients
+                </Button>
+            </div>
+        )
+    }
+
+    // Handle not found state for editing
+    if (isEditing && !ingredient) {
+        console.log("Ingredient not found for editing")
+        return (
+            <div className="text-center py-8 text-muted-foreground">
+                <h2 className="text-2xl font-bold mb-4">Ingredient Not Found</h2>
+                <p>The ingredient you're trying to edit doesn't exist or has been removed.</p>
+                <Button onClick={() => navigate({ to: "/ingredients" })} className="mt-4" variant="outline">
+                    <ArrowLeft className="h-4 w-4 mr-2" /> Back to Ingredients
+                </Button>
+            </div>
+        )
     }
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold">{isEditing ? 'Edit Ingredient' : 'Add Ingredient'}</h1>
-                <p className="text-muted-foreground">
-                    {isEditing ? 'Update the ingredient details below.' : 'Fill in the ingredient details below.'}
-                </p>
+            <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" asChild>
+                    <Link to="/ingredients">
+                        <ArrowLeft className="h-4 w-4" />
+                    </Link>
+                </Button>
+                <h1 className="text-3xl font-bold">{isEditing ? "Edit Ingredient" : "Add Ingredient"}</h1>
             </div>
 
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Basic Information */}
-                        <div className="space-y-4">
-                            <h2 className="text-xl font-semibold">Basic Information</h2>
-
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Basic Information</CardTitle>
+                            <CardDescription>Enter the essential details about this ingredient</CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormField
                                 control={form.control}
                                 name="name"
@@ -209,14 +296,11 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
 
                             <FormField
                                 control={form.control}
-                                name="category_id"
+                                name="categoryId"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Category</FormLabel>
-                                        <Select
-                                            onValueChange={(value) => field.onChange(Number(value))}
-                                            value={field.value?.toString()}
-                                        >
+                                        <Select onValueChange={(value) => field.onChange(Number(value))} value={field.value?.toString()}>
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select a category" />
@@ -243,7 +327,7 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
 
                             <FormField
                                 control={form.control}
-                                name="subcategory_id"
+                                name="subcategoryId"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Subcategory</FormLabel>
@@ -271,9 +355,7 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
                                                 )}
                                             </SelectContent>
                                         </Select>
-                                        <FormDescription>
-                                            Select a category first to see available subcategories
-                                        </FormDescription>
+                                        <FormDescription>Select a category first to see available subcategories</FormDescription>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -281,14 +363,11 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
 
                             <FormField
                                 control={form.control}
-                                name="default_unit_id"
+                                name="defaultUnitId"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Default Unit</FormLabel>
-                                        <Select
-                                            onValueChange={(value) => field.onChange(Number(value))}
-                                            value={field.value?.toString()}
-                                        >
+                                        <Select onValueChange={(value) => field.onChange(Number(value))} value={field.value?.toString()}>
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select a unit" />
@@ -312,28 +391,26 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
                                     </FormItem>
                                 )}
                             />
-                        </div>
+                        </CardContent>
+                    </Card>
 
-                        {/* Storage Information */}
-                        <div className="space-y-4">
-                            <h2 className="text-xl font-semibold">Storage Information</h2>
-
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Storage Information</CardTitle>
+                            <CardDescription>Information about storage conditions and shelf life</CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormField
                                 control={form.control}
                                 name="isPerishable"
                                 render={({ field }) => (
                                     <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                                         <FormControl>
-                                            <Checkbox
-                                                checked={field.value}
-                                                onCheckedChange={field.onChange}
-                                            />
+                                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                                         </FormControl>
                                         <div className="space-y-1 leading-none">
                                             <FormLabel>Perishable</FormLabel>
-                                            <FormDescription>
-                                                Check if this ingredient has a limited shelf life
-                                            </FormDescription>
+                                            <FormDescription>Check if this ingredient has a limited shelf life</FormDescription>
                                         </div>
                                     </FormItem>
                                 )}
@@ -345,10 +422,7 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Storage Type</FormLabel>
-                                        <Select
-                                            onValueChange={field.onChange}
-                                            value={field.value}
-                                        >
+                                        <Select onValueChange={field.onChange} value={field.value}>
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select storage type" />
@@ -377,10 +451,10 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
                                             <Input
                                                 type="number"
                                                 {...field}
-                                                value={field.value || ''}
+                                                value={field.value || ""}
                                                 onChange={(e) => {
-                                                    const value = e.target.value ? parseInt(e.target.value) : null;
-                                                    field.onChange(value);
+                                                    const value = e.target.value ? Number.parseInt(e.target.value) : null
+                                                    field.onChange(value)
                                                 }}
                                             />
                                         </FormControl>
@@ -393,23 +467,24 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
                                 control={form.control}
                                 name="storageInstructions"
                                 render={({ field }) => (
-                                    <FormItem>
+                                    <FormItem className="md:col-span-2">
                                         <FormLabel>Storage Instructions</FormLabel>
                                         <FormControl>
-                                            <Textarea {...field} value={field.value || ''} />
+                                            <Textarea {...field} value={field.value || ""} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
-                        </div>
-                    </div>
+                        </CardContent>
+                    </Card>
 
-                    {/* Supplier Information */}
-                    <div className="space-y-4">
-                        <h2 className="text-xl font-semibold">Supplier Information</h2>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Supplier Information</CardTitle>
+                            <CardDescription>Information about sourcing this ingredient</CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormField
                                 control={form.control}
                                 name="preferredSupplier"
@@ -417,7 +492,7 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
                                     <FormItem>
                                         <FormLabel>Preferred Supplier</FormLabel>
                                         <FormControl>
-                                            <Input {...field} value={field.value || ''} />
+                                            <Input {...field} value={field.value || ""} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -434,10 +509,10 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
                                             <Input
                                                 type="number"
                                                 {...field}
-                                                value={field.value || ''}
+                                                value={field.value || ""}
                                                 onChange={(e) => {
-                                                    const value = e.target.value ? parseInt(e.target.value) : null;
-                                                    field.onChange(value);
+                                                    const value = e.target.value ? Number.parseInt(e.target.value) : null
+                                                    field.onChange(value)
                                                 }}
                                             />
                                         </FormControl>
@@ -457,10 +532,10 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
                                                 type="number"
                                                 step="0.01"
                                                 {...field}
-                                                value={field.value || ''}
+                                                value={field.value || ""}
                                                 onChange={(e) => {
-                                                    const value = e.target.value ? parseFloat(e.target.value) : null;
-                                                    field.onChange(value);
+                                                    const value = e.target.value ? Number.parseFloat(e.target.value) : null
+                                                    field.onChange(value)
                                                 }}
                                             />
                                         </FormControl>
@@ -481,10 +556,10 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
                                                     type="number"
                                                     step="0.01"
                                                     {...field}
-                                                    value={field.value || ''}
+                                                    value={field.value || ""}
                                                     onChange={(e) => {
-                                                        const value = e.target.value ? parseFloat(e.target.value) : null;
-                                                        field.onChange(value);
+                                                        const value = e.target.value ? Number.parseFloat(e.target.value) : null
+                                                        field.onChange(value)
                                                     }}
                                                 />
                                             </FormControl>
@@ -495,14 +570,11 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
 
                                 <FormField
                                     control={form.control}
-                                    name="package_unit_id"
+                                    name="packageUnitId"
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Package Unit</FormLabel>
-                                            <Select
-                                                onValueChange={(value) => field.onChange(Number(value))}
-                                                value={field.value?.toString()}
-                                            >
+                                            <Select onValueChange={(value) => field.onChange(Number(value))} value={field.value?.toString()}>
                                                 <FormControl>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="Select a unit" />
@@ -535,7 +607,7 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
                                     <FormItem className="col-span-2">
                                         <FormLabel>Supplier Instructions</FormLabel>
                                         <FormControl>
-                                            <Textarea {...field} value={field.value || ''} />
+                                            <Textarea {...field} value={field.value || ""} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -549,36 +621,32 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
                                     <FormItem className="col-span-2">
                                         <FormLabel>Supplier Notes</FormLabel>
                                         <FormControl>
-                                            <Textarea {...field} value={field.value || ''} />
+                                            <Textarea {...field} value={field.value || ""} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
-                        </div>
-                    </div>
+                        </CardContent>
+                    </Card>
 
-                    {/* Additional Attributes */}
-                    <div className="space-y-4">
-                        <h2 className="text-xl font-semibold">Additional Attributes</h2>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Additional Attributes</CardTitle>
+                            <CardDescription>Other properties about this ingredient</CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                             <FormField
                                 control={form.control}
                                 name="isLocal"
                                 render={({ field }) => (
                                     <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                                         <FormControl>
-                                            <Checkbox
-                                                checked={field.value}
-                                                onCheckedChange={field.onChange}
-                                            />
+                                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                                         </FormControl>
                                         <div className="space-y-1 leading-none">
                                             <FormLabel>Local</FormLabel>
-                                            <FormDescription>
-                                                Sourced locally
-                                            </FormDescription>
+                                            <FormDescription>Sourced locally</FormDescription>
                                         </div>
                                     </FormItem>
                                 )}
@@ -590,16 +658,11 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
                                 render={({ field }) => (
                                     <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                                         <FormControl>
-                                            <Checkbox
-                                                checked={field.value}
-                                                onCheckedChange={field.onChange}
-                                            />
+                                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                                         </FormControl>
                                         <div className="space-y-1 leading-none">
                                             <FormLabel>Organic</FormLabel>
-                                            <FormDescription>
-                                                Certified organic
-                                            </FormDescription>
+                                            <FormDescription>Certified organic</FormDescription>
                                         </div>
                                     </FormItem>
                                 )}
@@ -611,16 +674,11 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
                                 render={({ field }) => (
                                     <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                                         <FormControl>
-                                            <Checkbox
-                                                checked={field.value}
-                                                onCheckedChange={field.onChange}
-                                            />
+                                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                                         </FormControl>
                                         <div className="space-y-1 leading-none">
                                             <FormLabel>Seasonal</FormLabel>
-                                            <FormDescription>
-                                                Only available seasonally
-                                            </FormDescription>
+                                            <FormDescription>Only available seasonally</FormDescription>
                                         </div>
                                     </FormItem>
                                 )}
@@ -632,16 +690,11 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
                                 render={({ field }) => (
                                     <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                                         <FormControl>
-                                            <Checkbox
-                                                checked={field.value}
-                                                onCheckedChange={field.onChange}
-                                            />
+                                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                                         </FormControl>
                                         <div className="space-y-1 leading-none">
                                             <FormLabel>Variable Price</FormLabel>
-                                            <FormDescription>
-                                                Price fluctuates based on market
-                                            </FormDescription>
+                                            <FormDescription>Price fluctuates based on market</FormDescription>
                                         </div>
                                     </FormItem>
                                 )}
@@ -653,16 +706,11 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
                                 render={({ field }) => (
                                     <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                                         <FormControl>
-                                            <Checkbox
-                                                checked={field.value}
-                                                onCheckedChange={field.onChange}
-                                            />
+                                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                                         </FormControl>
                                         <div className="space-y-1 leading-none">
                                             <FormLabel>Common Allergen</FormLabel>
-                                            <FormDescription>
-                                                Contains or is a common allergen
-                                            </FormDescription>
+                                            <FormDescription>Contains or is a common allergen</FormDescription>
                                         </div>
                                     </FormItem>
                                 )}
@@ -674,38 +722,30 @@ export function IngredientForm({ ingredientId }: IngredientFormProps) {
                                 render={({ field }) => (
                                     <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                                         <FormControl>
-                                            <Checkbox
-                                                checked={field.value}
-                                                onCheckedChange={field.onChange}
-                                            />
+                                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                                         </FormControl>
                                         <div className="space-y-1 leading-none">
                                             <FormLabel>Special Order</FormLabel>
-                                            <FormDescription>
-                                                Requires special ordering process
-                                            </FormDescription>
+                                            <FormDescription>Requires special ordering process</FormDescription>
                                         </div>
                                     </FormItem>
                                 )}
                             />
-                        </div>
-                    </div>
+                        </CardContent>
+                    </Card>
 
                     <div className="flex justify-end space-x-4">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => navigate({ to: '/ingredients' })}
-                        >
+                        <Button type="button" variant="outline" onClick={() => navigate({ to: "/ingredients" })}>
                             Cancel
                         </Button>
                         <Button type="submit" disabled={mutation.isPending}>
                             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {isEditing ? 'Update Ingredient' : 'Create Ingredient'}
+                            <Save className="mr-2 h-4 w-4" />
+                            {isEditing ? "Update Ingredient" : "Create Ingredient"}
                         </Button>
                     </div>
                 </form>
             </Form>
         </div>
-    );
+    )
 }

@@ -1,37 +1,54 @@
-// frontend/src/pages/dashboard.tsx
+"use client"
+
+import { useState, useEffect } from "react"
 import { Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card"
 import {
-    Apple, ChefHat, ShoppingCart, Package, Calendar, ArrowRight, Loader2
-} from 'lucide-react'
+    Apple,
+    ChefHat,
+    ShoppingCart,
+    Package,
+    Calendar,
+    ArrowRight,
+    Loader2,
+    Users,
+    Clock,
+    BarChart,
+    Utensils,
+    FileText,
+    Percent,
+    DollarSign,
+    Truck,
+    AlertTriangle,
+    Leaf,
+} from "lucide-react"
 import { ingredientApi, categoryApi, unitApi } from "../lib/api"
-import { useState, useEffect } from "react"
 
-export function DashboardPage() {
+export function Dashboard() {
     const [stats, setStats] = useState({
         ingredientCount: 0,
         categoryCount: 0,
-        unitCount: 0
+        unitCount: 0,
     })
 
     // Fetch ingredients
     const { data: ingredients, isLoading: ingredientsLoading } = useQuery({
-        queryKey: ['dashboard-ingredients'],
-        queryFn: () => ingredientApi.getAll()
+        queryKey: ["dashboard-ingredients"],
+        queryFn: () => ingredientApi.getAll(),
     })
 
     // Fetch categories
     const { data: categories, isLoading: categoriesLoading } = useQuery({
-        queryKey: ['dashboard-categories'],
-        queryFn: () => categoryApi.getAll()
+        queryKey: ["dashboard-categories"],
+        queryFn: () => categoryApi.getAll(),
     })
 
     // Fetch units
     const { data: units, isLoading: unitsLoading } = useQuery({
-        queryKey: ['dashboard-units'],
-        queryFn: () => unitApi.getAll()
+        queryKey: ["dashboard-units"],
+        queryFn: () => unitApi.getAll(),
     })
 
     // Update stats when data is loaded
@@ -40,7 +57,7 @@ export function DashboardPage() {
             setStats({
                 ingredientCount: ingredients.length,
                 categoryCount: categories.length,
-                unitCount: units.length
+                unitCount: units.length,
             })
         }
     }, [ingredients, categories, units])
@@ -71,9 +88,7 @@ export function DashboardPage() {
                         <div className="md:w-2/3 p-6">
                             <CardHeader className="px-0">
                                 <CardTitle className="text-2xl">Ingredient Management</CardTitle>
-                                <CardDescription>
-                                    Manage your ingredients database, categories, and measurement units
-                                </CardDescription>
+                                <CardDescription>Manage your ingredients database, categories, and measurement units</CardDescription>
                             </CardHeader>
                             <CardContent className="px-0 py-4">
                                 <div className="grid grid-cols-3 gap-4 mb-4">
@@ -91,7 +106,8 @@ export function DashboardPage() {
                                     </div>
                                 </div>
                                 <p className="text-sm text-muted-foreground">
-                                    Organize your ingredients by category, track nutritional information, and manage measurement conversions.
+                                    Organize your ingredients by category, track nutritional information, and manage measurement
+                                    conversions.
                                 </p>
                             </CardContent>
                             <CardFooter className="px-0 pt-2">
@@ -107,16 +123,14 @@ export function DashboardPage() {
                             <div className="text-center">
                                 <Apple className="h-16 w-16 mx-auto text-primary mb-4" />
                                 <p className="font-medium">Ingredient Management</p>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    The foundation of your recipe system
-                                </p>
+                                <p className="text-sm text-muted-foreground mt-1">The foundation of your recipe system</p>
                             </div>
                         </div>
                     </div>
                 </Card>
             </div>
 
-            {/* Other Modules (Coming Soon) */}
+            {/* All Modules Section */}
             <h2 className="text-2xl font-bold mb-6">All Modules</h2>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
@@ -145,7 +159,9 @@ export function DashboardPage() {
                         <p className="text-xs text-muted-foreground">Create and manage recipes</p>
                     </CardContent>
                     <CardFooter>
-                        <Button className="w-full" disabled>Coming Soon</Button>
+                        <Link to="/coming-soon" className="w-full">
+                            <Button className="w-full">Preview</Button>
+                        </Link>
                     </CardFooter>
                 </Card>
 
@@ -159,7 +175,9 @@ export function DashboardPage() {
                         <p className="text-xs text-muted-foreground">Generate shopping lists</p>
                     </CardContent>
                     <CardFooter>
-                        <Button className="w-full" disabled>Coming Soon</Button>
+                        <Link to="/coming-soon" className="w-full">
+                            <Button className="w-full">Preview</Button>
+                        </Link>
                     </CardFooter>
                 </Card>
 
@@ -173,7 +191,9 @@ export function DashboardPage() {
                         <p className="text-xs text-muted-foreground">Track your inventory</p>
                     </CardContent>
                     <CardFooter>
-                        <Button className="w-full" disabled>Coming Soon</Button>
+                        <Link to="/coming-soon" className="w-full">
+                            <Button className="w-full">Preview</Button>
+                        </Link>
                     </CardFooter>
                 </Card>
             </div>
@@ -226,7 +246,7 @@ export function DashboardPage() {
                 </div>
             </div>
 
-            {/* Future Features Preview */}
+            {/* Future Features Preview - Enhanced from the old dashboard */}
             <div className="mt-10 bg-muted rounded-lg p-6">
                 <h2 className="text-2xl font-bold mb-4">Coming Soon</h2>
                 <p className="text-muted-foreground mb-6">
@@ -262,6 +282,190 @@ export function DashboardPage() {
                     </div>
                 </div>
             </div>
+
+            {/* New Section: Advanced Features (from ingredients dashboard) */}
+            <div className="mt-10">
+                <h2 className="text-2xl font-bold mb-6">Advanced Features</h2>
+                <div className="grid gap-6 md:grid-cols-3">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center space-x-2">
+                            <div className="rounded-full bg-primary/10 p-2">
+                                <Users className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <CardTitle>Retreat Planning</CardTitle>
+                                <CardDescription>Manage meals for groups</CardDescription>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm">
+                                Plan meals for retreats of any size with automatic scaling and dietary accommodations
+                            </p>
+                        </CardContent>
+                        <CardFooter>
+                            <Link to="/coming-soon" className="w-full">
+                                <Button variant="outline" className="w-full">
+                                    Learn More
+                                </Button>
+                            </Link>
+                        </CardFooter>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center space-x-2">
+                            <div className="rounded-full bg-primary/10 p-2">
+                                <Clock className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <CardTitle>Meal Scheduling</CardTitle>
+                                <CardDescription>Organize retreat menus</CardDescription>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm">Create detailed meal schedules for multi-day retreats with prep timelines</p>
+                        </CardContent>
+                        <CardFooter>
+                            <Link to="/coming-soon" className="w-full">
+                                <Button variant="outline" className="w-full">
+                                    Learn More
+                                </Button>
+                            </Link>
+                        </CardFooter>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center space-x-2">
+                            <div className="rounded-full bg-primary/10 p-2">
+                                <BarChart className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <CardTitle>Cost Analysis</CardTitle>
+                                <CardDescription>Budget management</CardDescription>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm">Track ingredient costs and analyze meal expenses for better budget planning</p>
+                        </CardContent>
+                        <CardFooter>
+                            <Link to="/coming-soon" className="w-full">
+                                <Button variant="outline" className="w-full">
+                                    Learn More
+                                </Button>
+                            </Link>
+                        </CardFooter>
+                    </Card>
+                </div>
+            </div>
+
+            {/* New Section: Additional Planned Features */}
+            <div className="mt-10">
+                <h2 className="text-2xl font-bold mb-6">Planned Features</h2>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Recipe Library</CardTitle>
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground">
+                                Create, store, and organize recipes with detailed instructions and ingredient lists
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Nutritional Analysis</CardTitle>
+                            <Percent className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground">
+                                Calculate nutritional information for recipes and meal plans
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Budget Tracking</CardTitle>
+                            <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground">
+                                Monitor costs and stay within budget for retreat meal planning
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Supplier Management</CardTitle>
+                            <Truck className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground">
+                                Track suppliers, pricing, and order information for ingredients
+                            </p>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+
+            {/* New Section: Specialized Features */}
+            <div className="mt-10">
+                <h2 className="text-2xl font-bold mb-6">Specialized Features</h2>
+                <div className="grid gap-6 md:grid-cols-3">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center space-x-2">
+                            <div className="rounded-full bg-primary/10 p-2">
+                                <AlertTriangle className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <CardTitle>Allergen Tracking</CardTitle>
+                                <CardDescription>Food safety management</CardDescription>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm">
+                                Identify and track common allergens in ingredients and recipes to ensure guest safety
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center space-x-2">
+                            <div className="rounded-full bg-primary/10 p-2">
+                                <Utensils className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <CardTitle>Dietary Accommodations</CardTitle>
+                                <CardDescription>Special diet planning</CardDescription>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm">Easily plan for vegetarian, vegan, gluten-free, and other dietary requirements</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center space-x-2">
+                            <div className="rounded-full bg-primary/10 p-2">
+                                <Leaf className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <CardTitle>Sustainability Metrics</CardTitle>
+                                <CardDescription>Environmental impact</CardDescription>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm">Track local, organic, and seasonal ingredients to measure environmental impact</p>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
         </div>
     )
 }
+
+export default Dashboard
+

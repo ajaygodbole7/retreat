@@ -1,3 +1,4 @@
+// frontend/src/lib/api.ts
 import axios from 'axios';
 
 // Create axios instance with base URL and default headers
@@ -85,6 +86,7 @@ export const categoryApi = {
 
     // Subcategory methods
     getSubcategories: async (categoryId) => {
+        if (!categoryId) return [];
         const response = await api.get(`/categories/${categoryId}/subcategories`);
         return response.data;
     },
