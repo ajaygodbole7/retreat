@@ -12,7 +12,7 @@ export function Navbar() {
                             <img
                                 src={blossomLogo}
                                 alt="Blossom Foundation Logo"
-                                className="h-8 mr-2"
+                                className="h-12 mr-2"
                             />
                             <UtensilsCrossed className="h-6 w-6" />
                         </div>

@@ -11,7 +11,14 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "seed:grains": "ts-node prisma/seed/seed-grains-ingredients.ts"
+    "seed:grains": "ts-node prisma/seed/seed-grains-ingredients.ts",
+    "seed:oils": "ts-node prisma/seed/seed-oils-ingredients.ts",
+    "seed:spicesdry": "ts-node prisma/seed/seed-spicesdry-ingredients.ts",
+    "seed:vegetables": "ts-node prisma/seed/seed-vegetables-ingredients.ts",
+    "seed:dairy": "ts-node prisma/seed/seed-dairy-ingredients.ts",
+    "seed:frozenveg": "ts-node prisma/seed/seed-frozenveg-ingredients.ts",
+    "seed:ready": "ts-node prisma/seed/seed-ready-ingredients.ts",
+    "seed:fruit": "ts-node prisma/seed/seed-fruit-ingredients.ts"
   },
   "keywords": [],
   "author": "",

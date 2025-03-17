@@ -154,7 +154,7 @@ export async function seedCategories() {
             { name: "Pome Fruits", description: "Apples, pears, etc.", displayOrder: 5 },
             { name: "Melons", description: "Watermelon, cantaloupe, etc.", displayOrder: 6 },
         ],
-        "Dairy & Alternatives": [
+        "Dairy": [
             { name: "Milk & Plant Milks", description: "Dairy milk and plant-based alternatives", displayOrder: 1 },
             { name: "Cheese & Vegan Cheese", description: "Dairy cheese and plant-based alternatives", displayOrder: 2 },
             { name: "Yogurt & Fermented", description: "Yogurt and fermented dairy/alternatives", displayOrder: 3 },

@@ -102,7 +102,7 @@ export async function seedUnits() {
         // Metric volume units
         {
             name: "Liter",
-            abbreviation: "L",
+            abbreviation: "l",
             system: MeasurementSystem.METRIC,
             type: UnitType.VOLUME,
             base_key: `${MeasurementSystem.METRIC}:${UnitType.VOLUME}`,
@@ -253,6 +253,38 @@ export async function seedUnits() {
             type: UnitType.COUNT,
             base_key: `${MeasurementSystem.US}:${UnitType.COUNT}`,
             conversionFactor: 1, // 1 sprig
+        },
+        {
+            name: "Packets",
+            abbreviation: "packets",
+            system: MeasurementSystem.US,
+            type: UnitType.COUNT,
+            base_key: `${MeasurementSystem.US}:${UnitType.COUNT}`,
+            conversionFactor: 1, // 1 packet
+        },
+        {
+            name: "Pieces",
+            abbreviation: "pieces",
+            system: MeasurementSystem.US,
+            type: UnitType.COUNT,
+            base_key: `${MeasurementSystem.US}:${UnitType.COUNT}`,
+            conversionFactor: 1, // 1 Piece
+        },
+        {
+            name: "Loaves",
+            abbreviation: "loaves",
+            system: MeasurementSystem.US,
+            type: UnitType.COUNT,
+            base_key: `${MeasurementSystem.US}:${UnitType.COUNT}`,
+            conversionFactor: 1, // 1 Piece
+        },
+        {
+            name: "Biscuits",
+            abbreviation: "biscuits",
+            system: MeasurementSystem.US,
+            type: UnitType.COUNT,
+            base_key: `${MeasurementSystem.US}:${UnitType.COUNT}`,
+            conversionFactor: 1, // 1 Piece
         },
     ]
 
