@@ -22,9 +22,10 @@ import {
 } from "../../components/ui/form"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card"
 import { categoryApi, unitApi, ingredientApi } from "../../lib/api"
-import { Loader2, Save, ArrowLeft } from "lucide-react"
+import { Loader2, Save, ArrowLeft, AlertCircle } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Link } from "@tanstack/react-router"
+import { Alert, AlertDescription } from "../../components/ui/alert"
 
 // Define the form schema using zod
 const formSchema = z.object({
@@ -84,6 +85,14 @@ export function IngredientForm() {
     const navigate = useNavigate()
     const queryClient = useQueryClient()
 
+    // Track form section validation status
+    const [sectionErrors, setSectionErrors] = useState({
+        basic: false,
+        storage: false,
+        supplier: false,
+        attributes: false,
+    })
+
     // Fetch categories
     const { data: categories, isLoading: categoriesLoading } = useQuery({
         queryKey: ["categories"],
@@ -129,10 +138,19 @@ export function IngredientForm() {
             name: "",
             description: "",
             categoryId: undefined,
-            subcategoryId: undefined,
+            subcategoryId: null, // Use null instead of undefined for optional IDs
             defaultUnitId: undefined,
             isPerishable: false,
             storageType: "ROOM_TEMPERATURE",
+            shelfLifeDays: null, // Use null for optional numeric fields
+            storageInstructions: "",
+            supplierInstructions: "",
+            supplierNotes: "",
+            preferredSupplier: "",
+            orderLeadTimeDays: null,
+            costPerUnitDollars: null,
+            packageSize: null,
+            packageUnitId: null, // Use null for optional IDs
             isLocal: false,
             isOrganic: false,
             isSeasonalItem: false,
@@ -140,39 +158,56 @@ export function IngredientForm() {
             isCommonAllergen: false,
             isSpecialOrder: false,
         },
+        mode: "onChange", // Validate on change for real-time feedback
     })
 
     // Update form values when ingredient data is loaded
     useEffect(() => {
         if (isEditing && ingredient) {
-            // Set selected category for subcategory loading
-            setSelectedCategoryId(ingredient.categoryId)
+            console.log("Setting form values from ingredient:", ingredient);
 
-            // Reset form with ingredient data
-            form.reset({
-                name: ingredient.name,
-                description: ingredient.description || "",
-                categoryId: ingredient.categoryId,
-                subcategoryId: ingredient.subcategoryId || undefined,
-                defaultUnitId: ingredient.defaultUnitId,
-                isPerishable: ingredient.isPerishable,
-                storageType: ingredient.storageType,
-                shelfLifeDays: ingredient.shelfLifeDays || undefined,
-                storageInstructions: ingredient.storageInstructions || "",
-                supplierInstructions: ingredient.supplierInstructions || "",
-                supplierNotes: ingredient.supplierNotes || "",
-                preferredSupplier: ingredient.preferredSupplier || "",
-                orderLeadTimeDays: ingredient.orderLeadTimeDays || undefined,
-                costPerUnitDollars: ingredient.costPerUnitDollars || undefined,
-                packageSize: ingredient.packageSize || undefined,
-                packageUnitId: ingredient.packageUnitId || undefined,
-                isLocal: ingredient.isLocal,
-                isOrganic: ingredient.isOrganic,
-                isSeasonalItem: ingredient.isSeasonalItem,
-                hasVariablePrice: ingredient.hasVariablePrice,
-                isCommonAllergen: ingredient.isCommonAllergen,
-                isSpecialOrder: ingredient.isSpecialOrder,
-            })
+            // First set selected category to ensure subcategories are loaded
+            setSelectedCategoryId(ingredient.categoryId);
+
+            // Wait a brief moment to ensure category is set before resetting form
+            setTimeout(() => {
+                // Reset form with ingredient data - keep all values including null and undefined
+                form.reset({
+                    name: ingredient.name,
+                    description: ingredient.description ?? "",
+                    categoryId: ingredient.categoryId,
+                    subcategoryId: ingredient.subcategoryId ?? null,
+                    defaultUnitId: ingredient.defaultUnitId,
+                    isPerishable: ingredient.isPerishable ?? false,
+                    storageType: ingredient.storageType,
+                    shelfLifeDays: ingredient.shelfLifeDays ?? null,
+                    storageInstructions: ingredient.storageInstructions ?? "",
+                    supplierInstructions: ingredient.supplierInstructions ?? "",
+                    supplierNotes: ingredient.supplierNotes ?? "",
+                    preferredSupplier: ingredient.preferredSupplier ?? "",
+                    orderLeadTimeDays: ingredient.orderLeadTimeDays ?? null,
+                    costPerUnitDollars: ingredient.costPerUnitDollars ?? null,
+                    packageSize: ingredient.packageSize ?? null,
+                    packageUnitId: ingredient.packageUnitId ?? null,
+                    isLocal: ingredient.isLocal ?? false,
+                    isOrganic: ingredient.isOrganic ?? false,
+                    isSeasonalItem: ingredient.isSeasonalItem ?? false,
+                    hasVariablePrice: ingredient.hasVariablePrice ?? false,
+                    isCommonAllergen: ingredient.isCommonAllergen ?? false,
+                    isSpecialOrder: ingredient.isSpecialOrder ?? false,
+                }, {
+                    keepDefaultValues: false,
+                    keepDirty: false,
+                    keepErrors: false,
+                    keepIsSubmitted: false,
+                    keepTouched: false,
+                    keepIsValid: false,
+                    keepSubmitCount: false
+                });
+
+                // Log current form values to verify
+                console.log("Form values after reset:", form.getValues());
+            }, 100);
         }
     }, [isEditing, ingredient, form])
 
@@ -180,11 +215,50 @@ export function IngredientForm() {
     const watchedCategoryId = form.watch("categoryId")
 
     useEffect(() => {
-        if (watchedCategoryId && watchedCategoryId !== selectedCategoryId) {
-            setSelectedCategoryId(watchedCategoryId)
-            form.setValue("subcategoryId", undefined)
+        console.log("watchedCategoryId changed:", watchedCategoryId);
+
+        if (watchedCategoryId) {
+            // Always set the selected category ID when it changes in the form
+            if (watchedCategoryId !== selectedCategoryId) {
+                console.log("Setting selectedCategoryId to:", watchedCategoryId);
+                setSelectedCategoryId(watchedCategoryId);
+
+                // Only clear subcategory when changing to a different category
+                // Don't clear it on initial form load
+                if (selectedCategoryId !== null) {
+                    console.log("Clearing subcategoryId value");
+                    form.setValue("subcategoryId", null);
+                }
+            }
         }
     }, [watchedCategoryId, selectedCategoryId, form])
+
+    // Update section error states based on form errors
+    useEffect(() => {
+        const errors = form.formState.errors
+
+        setSectionErrors({
+            basic: !!(errors.name || errors.description || errors.categoryId || errors.subcategoryId || errors.defaultUnitId),
+            storage: !!(errors.isPerishable || errors.storageType || errors.shelfLifeDays || errors.storageInstructions),
+            supplier: !!(
+                errors.preferredSupplier ||
+                errors.orderLeadTimeDays ||
+                errors.costPerUnitDollars ||
+                errors.packageSize ||
+                errors.packageUnitId ||
+                errors.supplierInstructions ||
+                errors.supplierNotes
+            ),
+            attributes: !!(
+                errors.isLocal ||
+                errors.isOrganic ||
+                errors.isSeasonalItem ||
+                errors.hasVariablePrice ||
+                errors.isCommonAllergen ||
+                errors.isSpecialOrder
+            ),
+        })
+    }, [form.formState.errors])
 
     // Create or update mutation
     const mutation = useMutation({
@@ -247,321 +321,64 @@ export function IngredientForm() {
         )
     }
 
+    // Show validation errors at the top of the form
+    const hasErrors = Object.keys(form.formState.errors).length > 0
+
+    // Helper function to create required label
+    const RequiredLabel = ({ children }: { children: React.ReactNode }) => (
+        <div className="flex items-center space-x-1">
+            <span>{children}</span>
+            <span className="text-destructive">*</span>
+        </div>
+    )
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             <div className="flex items-center gap-2">
                 <Button variant="outline" size="icon" asChild>
                     <Link to="/ingredients">
                         <ArrowLeft className="h-4 w-4" />
                     </Link>
                 </Button>
-                <h1 className="text-3xl font-bold">{isEditing ? "Edit Ingredient" : "Add Ingredient"}</h1>
+                <h1 className="text-2xl font-bold">
+                    {isEditing ? `Editing: ${ingredient?.name}` : "Add Ingredient"}
+                </h1>
             </div>
 
+            {hasErrors && form.formState.submitCount > 0 && (
+                <Alert variant="destructive" className="mb-4">
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    <AlertDescription>
+                        Please correct the errors in the form before submitting.
+                    </AlertDescription>
+                </Alert>
+            )}
+
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Basic Information</CardTitle>
-                            <CardDescription>Enter the essential details about this ingredient</CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormField
-                                control={form.control}
-                                name="name"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Name</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="description"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Description</FormLabel>
-                                        <FormControl>
-                                            <Textarea {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="categoryId"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Category</FormLabel>
-                                        <Select onValueChange={(value) => field.onChange(Number(value))} value={field.value?.toString()}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select a category" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {categoriesLoading ? (
-                                                    <div className="flex justify-center p-2">
-                                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                                    </div>
-                                                ) : (
-                                                    categories?.map((category) => (
-                                                        <SelectItem key={category.id} value={category.id.toString()}>
-                                                            {category.name}
-                                                        </SelectItem>
-                                                    ))
-                                                )}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="subcategoryId"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Subcategory</FormLabel>
-                                        <Select
-                                            onValueChange={(value) => field.onChange(Number(value))}
-                                            value={field.value?.toString()}
-                                            disabled={!selectedCategoryId}
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select a subcategory" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {subcategoriesLoading ? (
-                                                    <div className="flex justify-center p-2">
-                                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                                    </div>
-                                                ) : (
-                                                    subcategories?.map((subcategory) => (
-                                                        <SelectItem key={subcategory.id} value={subcategory.id.toString()}>
-                                                            {subcategory.name}
-                                                        </SelectItem>
-                                                    ))
-                                                )}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormDescription>Select a category first to see available subcategories</FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="defaultUnitId"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Default Unit</FormLabel>
-                                        <Select onValueChange={(value) => field.onChange(Number(value))} value={field.value?.toString()}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select a unit" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {unitsLoading ? (
-                                                    <div className="flex justify-center p-2">
-                                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                                    </div>
-                                                ) : (
-                                                    units?.map((unit) => (
-                                                        <SelectItem key={unit.id} value={unit.id.toString()}>
-                                                            {unit.name} ({unit.abbreviation})
-                                                        </SelectItem>
-                                                    ))
-                                                )}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Storage Information</CardTitle>
-                            <CardDescription>Information about storage conditions and shelf life</CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormField
-                                control={form.control}
-                                name="isPerishable"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                        <FormControl>
-                                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                                        </FormControl>
-                                        <div className="space-y-1 leading-none">
-                                            <FormLabel>Perishable</FormLabel>
-                                            <FormDescription>Check if this ingredient has a limited shelf life</FormDescription>
-                                        </div>
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="storageType"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Storage Type</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select storage type" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="ROOM_TEMPERATURE">Room Temperature</SelectItem>
-                                                <SelectItem value="REFRIGERATED">Refrigerated</SelectItem>
-                                                <SelectItem value="FROZEN">Frozen</SelectItem>
-                                                <SelectItem value="DRY_STORAGE">Dry Storage</SelectItem>
-                                                <SelectItem value="COOL_DARK">Cool & Dark</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="shelfLifeDays"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Shelf Life (Days)</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="number"
-                                                {...field}
-                                                value={field.value || ""}
-                                                onChange={(e) => {
-                                                    const value = e.target.value ? Number.parseInt(e.target.value) : null
-                                                    field.onChange(value)
-                                                }}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="storageInstructions"
-                                render={({ field }) => (
-                                    <FormItem className="md:col-span-2">
-                                        <FormLabel>Storage Instructions</FormLabel>
-                                        <FormControl>
-                                            <Textarea {...field} value={field.value || ""} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Supplier Information</CardTitle>
-                            <CardDescription>Information about sourcing this ingredient</CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormField
-                                control={form.control}
-                                name="preferredSupplier"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Preferred Supplier</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} value={field.value || ""} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="orderLeadTimeDays"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Order Lead Time (Days)</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="number"
-                                                {...field}
-                                                value={field.value || ""}
-                                                onChange={(e) => {
-                                                    const value = e.target.value ? Number.parseInt(e.target.value) : null
-                                                    field.onChange(value)
-                                                }}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="costPerUnitDollars"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Cost Per Unit ($)</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="number"
-                                                step="0.01"
-                                                {...field}
-                                                value={field.value || ""}
-                                                onChange={(e) => {
-                                                    const value = e.target.value ? Number.parseFloat(e.target.value) : null
-                                                    field.onChange(value)
-                                                }}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <div className="grid grid-cols-2 gap-4">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Basic Information Card */}
+                        <Card className={sectionErrors.basic ? "border-destructive" : ""}>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="flex items-center">
+                                    Basic Information
+                                    {sectionErrors.basic && (
+                                        <AlertCircle className="h-4 w-4 ml-2 text-destructive" />
+                                    )}
+                                </CardTitle>
+                                <CardDescription>Essential ingredient details</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
                                 <FormField
                                     control={form.control}
-                                    name="packageSize"
+                                    name="name"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Package Size</FormLabel>
+                                            <FormLabel>
+                                                <RequiredLabel>Name</RequiredLabel>
+                                            </FormLabel>
                                             <FormControl>
-                                                <Input
-                                                    type="number"
-                                                    step="0.01"
-                                                    {...field}
-                                                    value={field.value || ""}
-                                                    onChange={(e) => {
-                                                        const value = e.target.value ? Number.parseFloat(e.target.value) : null
-                                                        field.onChange(value)
-                                                    }}
-                                                />
+                                                <Input {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -570,11 +387,117 @@ export function IngredientForm() {
 
                                 <FormField
                                     control={form.control}
-                                    name="packageUnitId"
+                                    name="description"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Package Unit</FormLabel>
-                                            <Select onValueChange={(value) => field.onChange(Number(value))} value={field.value?.toString()}>
+                                            <FormLabel>Description</FormLabel>
+                                            <FormControl>
+                                                <Textarea {...field} className="h-20 resize-none" />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="categoryId"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    <RequiredLabel>Category</RequiredLabel>
+                                                </FormLabel>
+                                                <Select
+                                                    onValueChange={(value) => {
+                                                        field.onChange(Number(value));
+                                                        console.log("Category selected:", value);
+                                                    }}
+                                                    value={field.value?.toString() || ""}
+                                                >
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select a category" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        {categoriesLoading ? (
+                                                            <div className="flex justify-center p-2">
+                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                            </div>
+                                                        ) : (
+                                                            categories?.map((category) => (
+                                                                <SelectItem key={category.id} value={category.id.toString()}>
+                                                                    {category.name}
+                                                                </SelectItem>
+                                                            ))
+                                                        )}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage className="text-xs" />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="subcategoryId"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Subcategory</FormLabel>
+                                                <Select
+                                                    onValueChange={(value) => {
+                                                        // Convert "none" string to null for the form value
+                                                        const numValue = value === "none" ? null : Number(value);
+                                                        field.onChange(numValue);
+                                                        console.log("Subcategory selected:", numValue);
+                                                    }}
+                                                    // Convert null/undefined to "none" for the Select component
+                                                    value={field.value?.toString() || "none"}
+                                                    disabled={!selectedCategoryId}
+                                                >
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select a subcategory" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="none">None</SelectItem>
+                                                        {subcategoriesLoading ? (
+                                                            <div className="flex justify-center p-2">
+                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                            </div>
+                                                        ) : (
+                                                            subcategories?.map((subcategory) => (
+                                                                <SelectItem key={subcategory.id} value={subcategory.id.toString()}>
+                                                                    {subcategory.name}
+                                                                </SelectItem>
+                                                            ))
+                                                        )}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormDescription className="text-xs">Select a category first</FormDescription>
+                                                <FormMessage className="text-xs" />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+
+                                <FormField
+                                    control={form.control}
+                                    name="defaultUnitId"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>
+                                                <RequiredLabel>Default Unit</RequiredLabel>
+                                            </FormLabel>
+                                            <Select
+                                                onValueChange={(value) => {
+                                                    field.onChange(Number(value));
+                                                    console.log("Default unit selected:", value);
+                                                }}
+                                                value={field.value?.toString() || ""}
+                                            >
                                                 <FormControl>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="Select a unit" />
@@ -594,147 +517,402 @@ export function IngredientForm() {
                                                     )}
                                                 </SelectContent>
                                             </Select>
+                                            <FormMessage className="text-xs" />
+                                        </FormItem>
+                                    )}
+                                />
+                            </CardContent>
+                        </Card>
+
+                        {/* Storage Information Card */}
+                        <Card className={sectionErrors.storage ? "border-destructive" : ""}>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="flex items-center">
+                                    Storage Information
+                                    {sectionErrors.storage && (
+                                        <AlertCircle className="h-4 w-4 ml-2 text-destructive" />
+                                    )}
+                                </CardTitle>
+                                <CardDescription>Storage conditions and shelf life</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="isPerishable"
+                                        render={({ field }) => (
+                                            <FormItem className="flex space-x-2 items-center h-10">
+                                                <FormControl>
+                                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                                </FormControl>
+                                                <div>
+                                                    <FormLabel>Perishable</FormLabel>
+                                                </div>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="shelfLifeDays"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Shelf Life (Days)</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="number"
+                                                        {...field}
+                                                        value={field.value || ""}
+                                                        onChange={(e) => {
+                                                            const value = e.target.value ? Number.parseInt(e.target.value) : null
+                                                            field.onChange(value)
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+
+                                <FormField
+                                    control={form.control}
+                                    name="storageType"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>
+                                                <RequiredLabel>Storage Type</RequiredLabel>
+                                            </FormLabel>
+                                            <Select
+                                                onValueChange={field.onChange}
+                                                value={field.value || "ROOM_TEMPERATURE"}
+                                                defaultValue="ROOM_TEMPERATURE"
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select storage type" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="ROOM_TEMPERATURE">Room Temperature</SelectItem>
+                                                    <SelectItem value="REFRIGERATED">Refrigerated</SelectItem>
+                                                    <SelectItem value="FROZEN">Frozen</SelectItem>
+                                                    <SelectItem value="DRY_STORAGE">Dry Storage</SelectItem>
+                                                    <SelectItem value="COOL_DARK">Cool & Dark</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage className="text-xs" />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="storageInstructions"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Storage Instructions</FormLabel>
+                                            <FormControl>
+                                                <Textarea {...field} value={field.value || ""} className="h-20 resize-none" />
+                                            </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
-                            </div>
+                            </CardContent>
+                        </Card>
+                    </div>
 
-                            <FormField
-                                control={form.control}
-                                name="supplierInstructions"
-                                render={({ field }) => (
-                                    <FormItem className="col-span-2">
-                                        <FormLabel>Supplier Instructions</FormLabel>
-                                        <FormControl>
-                                            <Textarea {...field} value={field.value || ""} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Supplier Information Card */}
+                        <Card className={sectionErrors.supplier ? "border-destructive" : ""}>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="flex items-center">
+                                    Supplier Information
+                                    {sectionErrors.supplier && (
+                                        <AlertCircle className="h-4 w-4 ml-2 text-destructive" />
+                                    )}
+                                </CardTitle>
+                                <CardDescription>Sourcing details</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="preferredSupplier"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Preferred Supplier</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} value={field.value || ""} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
 
-                            <FormField
-                                control={form.control}
-                                name="supplierNotes"
-                                render={({ field }) => (
-                                    <FormItem className="col-span-2">
-                                        <FormLabel>Supplier Notes</FormLabel>
-                                        <FormControl>
-                                            <Textarea {...field} value={field.value || ""} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </CardContent>
-                    </Card>
+                                    <FormField
+                                        control={form.control}
+                                        name="orderLeadTimeDays"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Lead Time (Days)</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="number"
+                                                        {...field}
+                                                        value={field.value || ""}
+                                                        onChange={(e) => {
+                                                            const value = e.target.value ? Number.parseInt(e.target.value) : null
+                                                            field.onChange(value)
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Additional Attributes</CardTitle>
-                            <CardDescription>Other properties about this ingredient</CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="isLocal"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                        <FormControl>
-                                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                                        </FormControl>
-                                        <div className="space-y-1 leading-none">
-                                            <FormLabel>Local</FormLabel>
-                                            <FormDescription>Sourced locally</FormDescription>
-                                        </div>
-                                    </FormItem>
-                                )}
-                            />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="costPerUnitDollars"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Cost Per Unit ($)</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        {...field}
+                                                        value={field.value || ""}
+                                                        onChange={(e) => {
+                                                            const value = e.target.value ? Number.parseFloat(e.target.value) : null
+                                                            field.onChange(value)
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
 
-                            <FormField
-                                control={form.control}
-                                name="isOrganic"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                        <FormControl>
-                                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                                        </FormControl>
-                                        <div className="space-y-1 leading-none">
-                                            <FormLabel>Organic</FormLabel>
-                                            <FormDescription>Certified organic</FormDescription>
-                                        </div>
-                                    </FormItem>
-                                )}
-                            />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <FormField
+                                            control={form.control}
+                                            name="packageSize"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Pkg Size</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            type="number"
+                                                            step="0.01"
+                                                            {...field}
+                                                            value={field.value || ""}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value ? Number.parseFloat(e.target.value) : null
+                                                                field.onChange(value)
+                                                            }}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
 
-                            <FormField
-                                control={form.control}
-                                name="isSeasonalItem"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                        <FormControl>
-                                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                                        </FormControl>
-                                        <div className="space-y-1 leading-none">
-                                            <FormLabel>Seasonal</FormLabel>
-                                            <FormDescription>Only available seasonally</FormDescription>
-                                        </div>
-                                    </FormItem>
-                                )}
-                            />
+                                        <FormField
+                                            control={form.control}
+                                            name="packageUnitId"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Pkg Unit</FormLabel>
+                                                    <Select
+                                                        onValueChange={(value) => {
+                                                            const numValue = value === "none" ? null : Number(value);
+                                                            field.onChange(numValue);
+                                                        }}
+                                                        value={field.value?.toString() || "none"}
+                                                    >
+                                                        <FormControl>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Unit" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="none">None</SelectItem>
+                                                            {unitsLoading ? (
+                                                                <div className="flex justify-center p-2">
+                                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                                </div>
+                                                            ) : (
+                                                                units?.map((unit) => (
+                                                                    <SelectItem key={unit.id} value={unit.id.toString()}>
+                                                                        {unit.name} ({unit.abbreviation})
+                                                                    </SelectItem>
+                                                                ))
+                                                            )}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage className="text-xs" />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
 
-                            <FormField
-                                control={form.control}
-                                name="hasVariablePrice"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                        <FormControl>
-                                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                                        </FormControl>
-                                        <div className="space-y-1 leading-none">
-                                            <FormLabel>Variable Price</FormLabel>
-                                            <FormDescription>Price fluctuates based on market</FormDescription>
-                                        </div>
-                                    </FormItem>
-                                )}
-                            />
+                                <FormField
+                                    control={form.control}
+                                    name="supplierInstructions"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Supplier Instructions</FormLabel>
+                                            <FormControl>
+                                                <Textarea {...field} value={field.value || ""} className="h-16 resize-none" />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
 
-                            <FormField
-                                control={form.control}
-                                name="isCommonAllergen"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                        <FormControl>
-                                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                                        </FormControl>
-                                        <div className="space-y-1 leading-none">
-                                            <FormLabel>Common Allergen</FormLabel>
-                                            <FormDescription>Contains or is a common allergen</FormDescription>
-                                        </div>
-                                    </FormItem>
-                                )}
-                            />
+                                <FormField
+                                    control={form.control}
+                                    name="supplierNotes"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Supplier Notes</FormLabel>
+                                            <FormControl>
+                                                <Textarea {...field} value={field.value || ""} className="h-16 resize-none" />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </CardContent>
+                        </Card>
 
-                            <FormField
-                                control={form.control}
-                                name="isSpecialOrder"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                        <FormControl>
-                                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                                        </FormControl>
-                                        <div className="space-y-1 leading-none">
-                                            <FormLabel>Special Order</FormLabel>
-                                            <FormDescription>Requires special ordering process</FormDescription>
-                                        </div>
-                                    </FormItem>
-                                )}
-                            />
-                        </CardContent>
-                    </Card>
+                        {/* Additional Attributes Card */}
+                        <Card className={sectionErrors.attributes ? "border-destructive" : ""}>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="flex items-center">
+                                    Additional Attributes
+                                    {sectionErrors.attributes && (
+                                        <AlertCircle className="h-4 w-4 ml-2 text-destructive" />
+                                    )}
+                                </CardTitle>
+                                <CardDescription>Other ingredient properties</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <FormField
+                                        control={form.control}
+                                        name="isLocal"
+                                        render={({ field }) => (
+                                            <FormItem className="flex items-center space-x-2">
+                                                <FormControl>
+                                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                                </FormControl>
+                                                <div>
+                                                    <FormLabel>Local</FormLabel>
+                                                    <FormDescription className="text-xs">Sourced locally</FormDescription>
+                                                </div>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
 
-                    <div className="flex justify-end space-x-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="isOrganic"
+                                        render={({ field }) => (
+                                            <FormItem className="flex items-center space-x-2">
+                                                <FormControl>
+                                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                                </FormControl>
+                                                <div>
+                                                    <FormLabel>Organic</FormLabel>
+                                                    <FormDescription className="text-xs">Certified organic</FormDescription>
+                                                </div>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="isSeasonalItem"
+                                        render={({ field }) => (
+                                            <FormItem className="flex items-center space-x-2">
+                                                <FormControl>
+                                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                                </FormControl>
+                                                <div>
+                                                    <FormLabel>Seasonal</FormLabel>
+                                                    <FormDescription className="text-xs">Only available seasonally</FormDescription>
+                                                </div>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="hasVariablePrice"
+                                        render={({ field }) => (
+                                            <FormItem className="flex items-center space-x-2">
+                                                <FormControl>
+                                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                                </FormControl>
+                                                <div>
+                                                    <FormLabel>Variable Price</FormLabel>
+                                                    <FormDescription className="text-xs">Price fluctuates</FormDescription>
+                                                </div>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="isCommonAllergen"
+                                        render={({ field }) => (
+                                            <FormItem className="flex items-center space-x-2">
+                                                <FormControl>
+                                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                                </FormControl>
+                                                <div>
+                                                    <FormLabel>Common Allergen</FormLabel>
+                                                    <FormDescription className="text-xs">Contains/is allergen</FormDescription>
+                                                </div>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="isSpecialOrder"
+                                        render={({ field }) => (
+                                            <FormItem className="flex items-center space-x-2">
+                                                <FormControl>
+                                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                                </FormControl>
+                                                <div>
+                                                    <FormLabel>Special Order</FormLabel>
+                                                    <FormDescription className="text-xs">Special ordering process</FormDescription>
+                                                </div>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <div className="flex justify-end space-x-4 mt-6">
                         <Button type="button" variant="outline" onClick={() => navigate({ to: "/ingredients" })}>
                             Cancel
                         </Button>
