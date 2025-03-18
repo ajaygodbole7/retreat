@@ -175,7 +175,7 @@ export function IngredientsPage() {
                                     className="text-center p-3 w-1/4 cursor-pointer hover:bg-muted/80"
                                     onClick={() => handleSortClick('name')}
                                 >
-                                    <span className="flex items-center justify-center">
+                                    <span className="flex items-left justify-left">
                                         Name
                                         {getSortIcon('name')}
                                     </span>

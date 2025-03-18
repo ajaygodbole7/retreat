@@ -85,6 +85,9 @@ export function IngredientForm() {
     const navigate = useNavigate()
     const queryClient = useQueryClient()
 
+    // Track if we're in the initial load process to prevent clearing subcategory
+    const [isInitialLoad, setIsInitialLoad] = useState(true)
+
     // Track form section validation status
     const [sectionErrors, setSectionErrors] = useState({
         basic: false,
@@ -129,6 +132,17 @@ export function IngredientForm() {
         queryKey: ["subcategories", selectedCategoryId],
         queryFn: () => categoryApi.getSubcategories(selectedCategoryId),
         enabled: !!selectedCategoryId,
+        staleTime: 0, // Ensure fresh data
+        retry: 2, // Add some retry logic
+        onSuccess: (data) => {
+            console.log("Subcategories loaded:", data);
+            // If we're editing and have a subcategoryId but the form value is null,
+            // we can re-apply it here as an extra safeguard
+            if (isEditing && ingredient?.subcategoryId && form.getValues("subcategoryId") === null) {
+                console.log("Re-applying subcategoryId from ingredient data:", ingredient.subcategoryId);
+                form.setValue("subcategoryId", ingredient.subcategoryId);
+            }
+        },
     })
 
     // Create form with default values
@@ -169,7 +183,10 @@ export function IngredientForm() {
             // First set selected category to ensure subcategories are loaded
             setSelectedCategoryId(ingredient.categoryId);
 
-            // Wait a brief moment to ensure category is set before resetting form
+            // Mark that we're in the initial loading phase
+            setIsInitialLoad(true);
+
+            // Wait a bit longer to ensure subcategories are loaded
             setTimeout(() => {
                 // Reset form with ingredient data - keep all values including null and undefined
                 form.reset({
@@ -207,6 +224,16 @@ export function IngredientForm() {
 
                 // Log current form values to verify
                 console.log("Form values after reset:", form.getValues());
+
+                // After a bit, mark initial load as complete
+                setTimeout(() => {
+                    setIsInitialLoad(false);
+                }, 100);
+            }, 300); // Increased timeout to ensure subcategories load
+        } else {
+            // For new ingredient form, mark initialLoad as false after a brief delay
+            setTimeout(() => {
+                setIsInitialLoad(false);
             }, 100);
         }
     }, [isEditing, ingredient, form])
@@ -224,14 +251,16 @@ export function IngredientForm() {
                 setSelectedCategoryId(watchedCategoryId);
 
                 // Only clear subcategory when changing to a different category
-                // Don't clear it on initial form load
-                if (selectedCategoryId !== null) {
-                    console.log("Clearing subcategoryId value");
+                // AND we're not in the initial load process
+                if (selectedCategoryId !== null && !isInitialLoad) {
+                    console.log("Clearing subcategoryId value - not in initial load");
                     form.setValue("subcategoryId", null);
+                } else {
+                    console.log("Preserving subcategoryId - in initial load or first category set");
                 }
             }
         }
-    }, [watchedCategoryId, selectedCategoryId, form])
+    }, [watchedCategoryId, selectedCategoryId, form, isInitialLoad])
 
     // Update section error states based on form errors
     useEffect(() => {
@@ -454,7 +483,7 @@ export function IngredientForm() {
                                                     }}
                                                     // Convert null/undefined to "none" for the Select component
                                                     value={field.value?.toString() || "none"}
-                                                    disabled={!selectedCategoryId}
+                                                    disabled={!selectedCategoryId || subcategoriesLoading}
                                                 >
                                                     <FormControl>
                                                         <SelectTrigger>
@@ -476,7 +505,13 @@ export function IngredientForm() {
                                                         )}
                                                     </SelectContent>
                                                 </Select>
-                                                <FormDescription className="text-xs">Select a category first</FormDescription>
+                                                <FormDescription className="text-xs">
+                                                    {!selectedCategoryId
+                                                        ? "Select a category first"
+                                                        : subcategoriesLoading
+                                                            ? "Loading subcategories..."
+                                                            : "Optional"}
+                                                </FormDescription>
                                                 <FormMessage className="text-xs" />
                                             </FormItem>
                                         )}
