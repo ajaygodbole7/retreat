@@ -7,12 +7,12 @@ export function Navbar() {
         <header className="bg-primary text-primary-foreground shadow">
             <div className="container mx-auto px-4 py-4">
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3 -ml-2">
                         <div className="flex items-center">
                             <img
                                 src={blossomLogo}
                                 alt="Blossom Foundation Logo"
-                                className="h-12 mr-2"
+                                className="h-16 mr-4"
                             />
                             <UtensilsCrossed className="h-6 w-6" />
                         </div>

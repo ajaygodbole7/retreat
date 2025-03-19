@@ -4,9 +4,16 @@ import { useQuery } from '@tanstack/react-query'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
-import { Plus, Search, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { Plus, Search, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Download } from 'lucide-react'
 import { ingredientApi, categoryApi } from '../../lib/api'
 import { Link } from '@tanstack/react-router'
+import { downloadCSV, CSVConversionOptions } from '../../lib/csv-export'
+import {
+    Ingredient,
+    IngredientCategory,
+    StorageType,
+    IngredientFilters
+} from '../../types/ingredient-types'
 
 type SortField = 'name' | 'category' | 'defaultUnit' | 'description'
 type SortDirection = 'asc' | 'desc'
@@ -17,6 +24,7 @@ export function IngredientsPage() {
     const [debouncedSearch, setDebouncedSearch] = useState(searchQuery)
     const [sortField, setSortField] = useState<SortField>('name')
     const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+    const [isExporting, setIsExporting] = useState(false)
 
     // Debounce search query to prevent excessive API calls
     useEffect(() => {
@@ -28,18 +36,28 @@ export function IngredientsPage() {
     }, [searchQuery])
 
     // Fetch all categories for filter dropdown
-    const { data: categories } = useQuery({
+    const { data: categories } = useQuery<IngredientCategory[]>({
         queryKey: ['categories'],
         queryFn: () => categoryApi.getAll()
     })
 
+    // Prepare API filters
+    const getFilters = (): IngredientFilters => {
+        const filters: IngredientFilters = {
+            search: debouncedSearch || undefined
+        }
+
+        if (categoryFilter && categoryFilter !== 'all') {
+            filters.categoryId = categoryFilter
+        }
+
+        return filters
+    }
+
     // Fetch ingredients with filters
-    const { data: ingredients, isLoading, error } = useQuery({
+    const { data: ingredients, isLoading, error } = useQuery<Ingredient[]>({
         queryKey: ['ingredients', debouncedSearch, categoryFilter],
-        queryFn: () => ingredientApi.getAll({
-            search: debouncedSearch,
-            categoryId: categoryFilter && categoryFilter !== 'all' ? categoryFilter : undefined
-        })
+        queryFn: () => ingredientApi.getAll(getFilters())
     })
 
     // Reset filters
@@ -103,16 +121,104 @@ export function IngredientsPage() {
             <ArrowDown className="ml-2 h-4 w-4" />;
     };
 
+    // Format storage type for display
+    const formatStorageType = (type: StorageType): string => {
+        return type.replace('_', ' ').toLowerCase()
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    };
+
+    // Handle CSV export
+    const handleExportCSV = () => {
+        // Define CSV conversion options for ingredients
+        const csvOptions: CSVConversionOptions<Ingredient> = {
+            headers: [
+                'Name',
+                'Category',
+                'Subcategory',
+                'Default Unit',
+                'Description',
+                'Storage Type',
+                'Perishable',
+                'Shelf Life (Days)',
+                'Preferred Supplier',
+                'Cost Per Unit ($)',
+                'Package Size',
+                'Package Unit',
+                'Lead Time (Days)',
+                'Is Local',
+                'Is Organic',
+                'Is Seasonal',
+                'Has Variable Price',
+                'Is Common Allergen',
+                'Is Special Order'
+            ],
+            mapItemToRow: (ingredient) => [
+                ingredient.name,
+                ingredient.category?.name,
+                ingredient.subcategory?.name,
+                ingredient.defaultUnit ?
+                    `${ingredient.defaultUnit.name}${ingredient.defaultUnit.abbreviation ? ` (${ingredient.defaultUnit.abbreviation})` : ''}`
+                    : '',
+                ingredient.description,
+                formatStorageType(ingredient.storageType),
+                ingredient.isPerishable ? 'Yes' : 'No',
+                ingredient.shelfLifeDays,
+                ingredient.preferredSupplier,
+                ingredient.costPerUnitDollars,
+                ingredient.packageSize,
+                ingredient.packageUnit ?
+                    `${ingredient.packageUnit.name}${ingredient.packageUnit.abbreviation ? ` (${ingredient.packageUnit.abbreviation})` : ''}`
+                    : '',
+                ingredient.orderLeadTimeDays,
+                ingredient.isLocal ? 'Yes' : 'No',
+                ingredient.isOrganic ? 'Yes' : 'No',
+                ingredient.isSeasonalItem ? 'Yes' : 'No',
+                ingredient.hasVariablePrice ? 'Yes' : 'No',
+                ingredient.isCommonAllergen ? 'Yes' : 'No',
+                ingredient.isSpecialOrder ? 'Yes' : 'No'
+            ],
+            filenamePrefix: 'ingredients'
+        };
+
+        // Use the utility function for downloading CSV
+        downloadCSV(
+            sortedIngredients,
+            csvOptions,
+            () => setIsExporting(true),
+            () => setIsExporting(false),
+            (error) => {
+                console.error('Error exporting ingredients:', error);
+                setIsExporting(false);
+            }
+        );
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold">Ingredients</h1>
-                <Link to="/ingredients/new">
-                    <Button>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Ingredient
+                <div className="flex space-x-2">
+                    <Button
+                        variant="outline"
+                        onClick={handleExportCSV}
+                        disabled={isExporting || isLoading || !sortedIngredients.length}
+                    >
+                        {isExporting ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                            <Download className="h-4 w-4 mr-2" />
+                        )}
+                        Export to CSV
                     </Button>
-                </Link>
+                    <Link to="/ingredients/new">
+                        <Button>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Ingredient
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
             <div className="flex flex-col md:flex-row gap-4 mb-4">
