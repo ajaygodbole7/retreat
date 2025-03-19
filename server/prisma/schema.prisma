@@ -75,10 +75,16 @@ model Ingredient {
   substitutes          IngredientSubstitute[]  @relation("OriginalIngredient")
   substituteFor        IngredientSubstitute[]  @relation("SubstituteIngredient")
   densityConversions   IngredientDensity[]
+  // New recipe relations
+  recipeIngredients    RecipeIngredient[]     // Relation to recipes that use this ingredient
+  alternateFor         RecipeIngredient[] @relation("AlternateIngredient") // Relation to recipes where this is an alternate
   
   // Tracking
+  createdBy            String?          @map("created_by")
   createdAt            DateTime         @default(now()) @map("created_at")
+  lastUpdatedBy        String?          @map("last_updated_by") 
   updatedAt            DateTime         @updatedAt @map("updated_at")
+  
 
   @@index([categoryId])
   @@index([subcategoryId])
@@ -114,9 +120,12 @@ model IngredientSubcategory {
   // Relationships
   ingredients          Ingredient[]
   
-  // Tracking
+// Tracking
+  createdBy            String?          @map("created_by")
   createdAt            DateTime         @default(now()) @map("created_at")
+  lastUpdatedBy        String?          @map("last_updated_by") 
   updatedAt            DateTime         @updatedAt @map("updated_at")
+  
   
   @@unique([name, categoryId])
   @@index([categoryId])
@@ -128,6 +137,13 @@ model IngredientAllergen {
   ingredient           Ingredient       @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
   allergenName         String           @map("allergen_name")
 
+  // Tracking
+  createdBy            String?          @map("created_by")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  lastUpdatedBy        String?          @map("last_updated_by") 
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+  
+
   @@unique([ingredientId, allergenName])
 }
 
@@ -136,6 +152,13 @@ model IngredientDietaryFlag {
   ingredientId         Int              @map("ingredient_id")
   ingredient           Ingredient       @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
   flag                 String           // e.g., "Vegan", "Gluten-Free"
+
+  // Tracking
+  createdBy            String?          @map("created_by")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  lastUpdatedBy        String?          @map("last_updated_by") 
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+  
 
   @@unique([ingredientId, flag])
 }
@@ -148,6 +171,13 @@ model IngredientSubstitute {
   substituteIngredient Ingredient       @relation("SubstituteIngredient", fields: [substituteIngredientId], references: [id])
   conversionRatio      Float            @default(1) @map("conversion_ratio")
   notes                String?
+
+  // Tracking
+  createdBy            String?          @map("created_by")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  lastUpdatedBy        String?          @map("last_updated_by") 
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+  
 
   @@unique([ingredientId, substituteIngredientId])
 }
@@ -180,12 +210,15 @@ model UnitOfMeasure {
   volumeDensities      IngredientDensity[] @relation("VolumeUnit")
   weightDensities      IngredientDensity[] @relation("WeightUnit")
   
-  // Tracking
+// Tracking
+  createdBy            String?          @map("created_by")
   createdAt            DateTime         @default(now()) @map("created_at")
+  lastUpdatedBy        String?          @map("last_updated_by") 
   updatedAt            DateTime         @updatedAt @map("updated_at")
   
   @@index([system])
   @@index([type])
+  RecipeIngredient RecipeIngredient[]
 }
 
 model IngredientDensity {
@@ -199,5 +232,124 @@ model IngredientDensity {
   conversionFactor     Float            @map("conversion_factor") // e.g., 1 cup of flour = 120 grams
   notes                String?
 
+  // Tracking
+  createdBy            String?          @map("created_by")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  lastUpdatedBy        String?          @map("last_updated_by") 
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+  
+
   @@unique([ingredientId, volumeUnitId, weightUnitId])
+}
+
+// Recipe-related enums
+enum CourseType {
+  MAIN_COURSE
+  SIDE_DISH
+  APPETIZER 
+  DESSERT
+  BEVERAGE
+  BREAKFAST
+  SNACK
+}
+
+enum CookingMethod {
+  STOVETOP
+  PRESSURE_COOKER
+  OVEN
+  NO_COOK
+  SLOW_COOK
+  STEAM
+}
+
+// Recipe model
+model Recipe {
+  id                   Int              @id @default(autoincrement()) @map("recipe_id")
+  name                 String
+  description          String?
+  servingSize          Int              @default(8) @map("serving_size")
+  preparationTimeMinutes Int?           @map("preparation_time_minutes")
+  cookingTimeMinutes   Int?             @map("cooking_time_minutes")
+  totalTimeMinutes     Int?             @map("total_time_minutes")
+  notes                String?
+  
+  // Indian cooking specifics
+  cookingMethod        CookingMethod?   @map("cooking_method")
+  cookingEquipment     String?          @map("cooking_equipment") 
+  
+  // Dietary info
+  hasOnionGarlic       Boolean          @default(true) @map("has_onion_garlic")
+  isGlutenFree         Boolean          @default(false) @map("is_gluten_free")
+  isVegan              Boolean          @default(false) @map("is_vegan")
+  
+  courseType           CourseType       @default(MAIN_COURSE) @map("course_type")
+  tags                 String?          // Comma-separated tags
+  submittedBy          String?          @map("submitted_by") // Name of the volunteer cook
+  
+  // Relationships
+  recipeIngredients    RecipeIngredient[]
+  steps                RecipeStep[]     // Relationship to steps
+  
+  // Tracking
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+  createdBy            String?          @map("created_by")
+  lastUpdatedBy        String?          @map("last_updated_by")
+  
+  @@index([name])
+  @@index([courseType])
+  @@index([hasOnionGarlic])
+  @@index([isVegan])
+  @@index([isGlutenFree])
+}
+
+// Recipe Step model
+model RecipeStep {
+  id                   Int              @id @default(autoincrement()) @map("recipe_step_id")
+  recipeId             Int              @map("recipe_id")
+  recipe               Recipe           @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  stepNumber           Int              @map("step_number") // For ordering
+  instruction          String           // The text for this step
+  estimatedTimeMinutes Int?             @map("estimated_time_minutes") // Optional timing info
+  isOptional           Boolean          @default(false) @map("is_optional")
+  
+  // Tracking
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+  createdBy            String?          @map("created_by")
+  lastUpdatedBy        String?          @map("last_updated_by")
+  
+  @@index([recipeId, stepNumber]) // For efficient ordering of steps
+}
+
+// Recipe Ingredient model
+model RecipeIngredient {
+  id                    Int                @id @default(autoincrement()) @map("recipe_ingredient_id")
+  recipeId              Int                @map("recipe_id")
+  recipe                Recipe             @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredientId          Int                @map("ingredient_id")
+  ingredient            Ingredient         @relation(fields: [ingredientId], references: [id])
+  quantity              Float              // Amount of the ingredient
+  unitId                Int                @map("unit_id")
+  unit                  UnitOfMeasure      @relation(fields: [unitId], references: [id])
+  preparation           String?            // E.g., "chopped", "minced", etc.
+  isOptional            Boolean            @default(false) @map("is_optional")
+  displayOrder          Int                @default(0) @map("display_order") // For ingredient ordering in the recipe
+  notes                 String?            // Any special notes about this ingredient
+  
+  // Scaling behavior information
+  scalingFactor         Float              @default(1.0) @map("scaling_factor") // For ingredients that don't scale linearly
+  alternateIngredientId Int?               @map("alternate_ingredient_id") // For suggesting substitutes
+  alternateIngredient   Ingredient?        @relation("AlternateIngredient", fields: [alternateIngredientId], references: [id])
+  
+  // Tracking
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+  createdBy             String?            @map("created_by")
+  lastUpdatedBy         String?            @map("last_updated_by")
+  
+  @@unique([recipeId, ingredientId, unitId, preparation])
+  @@index([recipeId])
+  @@index([ingredientId])
+  @@index([alternateIngredientId])
 }

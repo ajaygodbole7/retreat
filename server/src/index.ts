@@ -10,6 +10,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { ingredientRoutes } from './routes/ingredientRoutes';
 import { categoryRoutes } from './routes/categoryRoutes';
 import { unitRoutes } from './routes/unitRoutes';
+import { recipeRoutes } from './routes/recipeRoutes';
 
 // Initialize express app
 const app = express();
@@ -60,7 +61,7 @@ if (process.env.NODE_ENV === 'production') {
 app.use('/api/ingredients', ingredientRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/units', unitRoutes);
-
+app.use('/api/recipes', recipeRoutes);
 // Health check endpoint
 app.get('/health', (_req, res) => {
     res.status(200).json({ status: 'ok' });
