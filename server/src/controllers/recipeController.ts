@@ -10,6 +10,11 @@ import {
     CreateRecipeIngredientInput,
     UpdateRecipeIngredientInput
 } from "../types/recipe-types";
+import {
+    addCreationTracking,
+    addUpdateTracking,
+    getCurrentUserId
+} from "../utils/whoUtils";
 
 /**
  * Get all recipes with optional filtering
@@ -39,6 +44,11 @@ export const getAllRecipes = async (req: Request, res: Response, next: NextFunct
 
         if (filters.submittedBy) {
             where.submittedBy = { contains: filters.submittedBy, mode: 'insensitive' };
+        }
+
+        // Add createdBy filter support
+        if (filters.createdBy) {
+            where.createdBy = { equals: filters.createdBy, mode: 'insensitive' };
         }
 
         if (filters.search) {
@@ -107,8 +117,17 @@ export const getRecipeById = async (req: Request, res: Response, next: NextFunct
  */
 export const createRecipe = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const recipeData: CreateRecipeInput = req.body;
+        // Get the base recipe data from the request
+        const baseRecipeData: CreateRecipeInput = req.body;
 
+        // Ensure baseRecipeData is an object (type constraint)
+        const recipeDataObj = { ...baseRecipeData };
+
+        // Get the current user and add tracking fields
+        const userId = getCurrentUserId(req);
+        const recipeData = addCreationTracking(recipeDataObj, userId);
+
+        // Create the recipe with tracking fields
         const recipe = await prisma.recipe.create({
             data: recipeData
         });
@@ -125,11 +144,21 @@ export const createRecipe = async (req: Request, res: Response, next: NextFuncti
 export const updateRecipe = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { id } = req.params;
-        const recipeData: UpdateRecipeInput = req.body;
 
+        // Get the base update data from the request
+        const baseUpdateData: UpdateRecipeInput = req.body;
+
+        // Ensure baseUpdateData is an object (type constraint)
+        const updateDataObj = { ...baseUpdateData };
+
+        // Get the current user and add tracking fields
+        const userId = getCurrentUserId(req);
+        const updateData = addUpdateTracking(updateDataObj, userId);
+
+        // Update the recipe
         const recipe = await prisma.recipe.update({
             where: { id: parseInt(id) },
-            data: recipeData
+            data: updateData
         });
 
         res.json(recipe);
@@ -154,12 +183,15 @@ export const deleteRecipe = async (req: Request, res: Response, next: NextFuncti
             throw new AppError('Recipe not found', 404);
         }
 
-        // Delete the recipe - Prisma will cascade delete related records based on schema
+        // Delete the recipe - this will cascade delete steps and ingredients
         await prisma.recipe.delete({
             where: { id: parseInt(id) }
         });
 
-        res.json({ message: "Recipe deleted successfully" });
+        res.json({
+            message: "Recipe deleted successfully",
+            deletedBy: getCurrentUserId(req)
+        });
     } catch (error) {
         next(error);
     }
@@ -211,7 +243,15 @@ export const getRecipeStepById = async (req: Request, res: Response, next: NextF
  */
 export const createRecipeStep = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const stepData: CreateRecipeStepInput = req.body;
+        // Get the base step data from the request
+        const baseStepData: CreateRecipeStepInput = req.body;
+
+        // Ensure baseStepData is an object (type constraint)
+        const stepDataObj = { ...baseStepData };
+
+        // Get the current user and add tracking fields
+        const userId = getCurrentUserId(req);
+        const stepData = addCreationTracking(stepDataObj, userId);
 
         // Verify the recipe exists
         const recipe = await prisma.recipe.findUnique({
@@ -222,6 +262,7 @@ export const createRecipeStep = async (req: Request, res: Response, next: NextFu
             throw new AppError('Recipe not found', 404);
         }
 
+        // Create the step with tracking fields
         const step = await prisma.recipeStep.create({
             data: stepData
         });
@@ -238,11 +279,21 @@ export const createRecipeStep = async (req: Request, res: Response, next: NextFu
 export const updateRecipeStep = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { id } = req.params;
-        const stepData: UpdateRecipeStepInput = req.body;
 
+        // Get the base update data from the request
+        const baseUpdateData: UpdateRecipeStepInput = req.body;
+
+        // Ensure baseUpdateData is an object (type constraint)
+        const updateDataObj = { ...baseUpdateData };
+
+        // Get the current user and add tracking fields
+        const userId = getCurrentUserId(req);
+        const updateData = addUpdateTracking(updateDataObj, userId);
+
+        // Update the step
         const step = await prisma.recipeStep.update({
             where: { id: parseInt(id) },
-            data: stepData
+            data: updateData
         });
 
         res.json(step);
@@ -272,7 +323,10 @@ export const deleteRecipeStep = async (req: Request, res: Response, next: NextFu
             where: { id: parseInt(id) }
         });
 
-        res.json({ message: "Recipe step deleted successfully" });
+        res.json({
+            message: "Recipe step deleted successfully",
+            deletedBy: getCurrentUserId(req)
+        });
     } catch (error) {
         next(error);
     }
@@ -334,7 +388,15 @@ export const getRecipeIngredientById = async (req: Request, res: Response, next:
  */
 export const createRecipeIngredient = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const ingredientData: CreateRecipeIngredientInput = req.body;
+        // Get the base ingredient data from the request
+        const baseIngredientData: CreateRecipeIngredientInput = req.body;
+
+        // Ensure baseIngredientData is an object (type constraint)
+        const ingredientDataObj = { ...baseIngredientData };
+
+        // Get the current user and add tracking fields
+        const userId = getCurrentUserId(req);
+        const ingredientData = addCreationTracking(ingredientDataObj, userId);
 
         // Verify the recipe exists
         const recipe = await prisma.recipe.findUnique({
@@ -374,6 +436,7 @@ export const createRecipeIngredient = async (req: Request, res: Response, next: 
             }
         }
 
+        // Create the recipe ingredient with tracking fields
         const recipeIngredient = await prisma.recipeIngredient.create({
             data: ingredientData,
             include: {
@@ -395,12 +458,21 @@ export const createRecipeIngredient = async (req: Request, res: Response, next: 
 export const updateRecipeIngredient = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { id } = req.params;
-        const ingredientData: UpdateRecipeIngredientInput = req.body;
+
+        // Get the base update data from the request
+        const baseUpdateData: UpdateRecipeIngredientInput = req.body;
+
+        // Ensure baseUpdateData is an object (type constraint)
+        const updateDataObj = { ...baseUpdateData };
+
+        // Get the current user and add tracking fields
+        const userId = getCurrentUserId(req);
+        const updateData = addUpdateTracking(updateDataObj, userId);
 
         // Verify the unit exists if provided
-        if (ingredientData.unitId) {
+        if (updateData.unitId) {
             const unit = await prisma.unitOfMeasure.findUnique({
-                where: { id: ingredientData.unitId }
+                where: { id: updateData.unitId }
             });
 
             if (!unit) {
@@ -409,9 +481,9 @@ export const updateRecipeIngredient = async (req: Request, res: Response, next: 
         }
 
         // Verify the alternate ingredient exists if provided
-        if (ingredientData.alternateIngredientId) {
+        if (updateData.alternateIngredientId) {
             const alternateIngredient = await prisma.ingredient.findUnique({
-                where: { id: ingredientData.alternateIngredientId }
+                where: { id: updateData.alternateIngredientId }
             });
 
             if (!alternateIngredient) {
@@ -419,9 +491,10 @@ export const updateRecipeIngredient = async (req: Request, res: Response, next: 
             }
         }
 
+        // Update the recipe ingredient
         const recipeIngredient = await prisma.recipeIngredient.update({
             where: { id: parseInt(id) },
-            data: ingredientData,
+            data: updateData,
             include: {
                 ingredient: true,
                 unit: true,
@@ -456,7 +529,10 @@ export const deleteRecipeIngredient = async (req: Request, res: Response, next: 
             where: { id: parseInt(id) }
         });
 
-        res.json({ message: "Recipe ingredient deleted successfully" });
+        res.json({
+            message: "Recipe ingredient deleted successfully",
+            deletedBy: getCurrentUserId(req)
+        });
     } catch (error) {
         next(error);
     }

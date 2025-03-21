@@ -1,11 +1,10 @@
 "use client"
 
-// frontend/src/features/ingredients/IngredientForm.tsx
+import type React from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { useNavigate, useRouter, useParams } from "@tanstack/react-router"
+import { useNavigate, useParams } from "@tanstack/react-router"
 import { Button } from "../../components/ui/button"
 import { Input } from "../../components/ui/input"
 import { Textarea } from "../../components/ui/textarea"
@@ -21,11 +20,14 @@ import {
     FormMessage,
 } from "../../components/ui/form"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card"
-import { categoryApi, unitApi, ingredientApi } from "../../lib/api"
 import { Loader2, Save, ArrowLeft, AlertCircle } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Link } from "@tanstack/react-router"
 import { Alert, AlertDescription } from "../../components/ui/alert"
+import { useIngredient, useCreateIngredient, useUpdateIngredient } from "../../hooks/useIngredients"
+import { useCategoryList, useSubcategories } from "../../hooks/useCategories"
+import { useQuery } from "@tanstack/react-query"
+import { unitService } from "../../services/unit-service"
 
 // Define the form schema using zod
 const formSchema = z.object({
@@ -58,10 +60,8 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>
 
 export function IngredientForm() {
-    // Get the route params correctly from TanStack Router
-    // Check which route we're on
-    const router = useRouter()
-    const pathname = router.state.location.pathname
+    // Check which route we're on using TanStack Router
+    const pathname = window.location.pathname
     const isEditRoute = pathname.includes("/edit")
 
     // Use the appropriate route pattern
@@ -83,7 +83,6 @@ export function IngredientForm() {
     console.log("Is editing mode:", isEditing)
 
     const navigate = useNavigate()
-    const queryClient = useQueryClient()
 
     // Track if we're in the initial load process to prevent clearing subcategory
     const [isInitialLoad, setIsInitialLoad] = useState(true)
@@ -97,15 +96,12 @@ export function IngredientForm() {
     })
 
     // Fetch categories
-    const { data: categories, isLoading: categoriesLoading } = useQuery({
-        queryKey: ["categories"],
-        queryFn: () => categoryApi.getAll(),
-    })
+    const { data: categories, isLoading: categoriesLoading } = useCategoryList()
 
     // Fetch units
     const { data: units, isLoading: unitsLoading } = useQuery({
         queryKey: ["units"],
-        queryFn: () => unitApi.getAll(),
+        queryFn: () => unitService.getAll(),
     })
 
     // Fetch ingredient data if editing
@@ -113,11 +109,7 @@ export function IngredientForm() {
         data: ingredient,
         isLoading: ingredientLoading,
         isError: ingredientError,
-    } = useQuery({
-        queryKey: ["ingredient", numericIngredientId],
-        queryFn: () => (numericIngredientId ? ingredientApi.getById(numericIngredientId) : null),
-        enabled: isEditing,
-    })
+    } = useIngredient(numericIngredientId || 0)
 
     // Log when ingredient data is received
     useEffect(() => {
@@ -128,22 +120,7 @@ export function IngredientForm() {
     const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
 
     // Fetch subcategories based on selected category
-    const { data: subcategories, isLoading: subcategoriesLoading } = useQuery({
-        queryKey: ["subcategories", selectedCategoryId],
-        queryFn: () => categoryApi.getSubcategories(selectedCategoryId),
-        enabled: !!selectedCategoryId,
-        staleTime: 0, // Ensure fresh data
-        retry: 2, // Add some retry logic
-        onSuccess: (data) => {
-            console.log("Subcategories loaded:", data);
-            // If we're editing and have a subcategoryId but the form value is null,
-            // we can re-apply it here as an extra safeguard
-            if (isEditing && ingredient?.subcategoryId && form.getValues("subcategoryId") === null) {
-                console.log("Re-applying subcategoryId from ingredient data:", ingredient.subcategoryId);
-                form.setValue("subcategoryId", ingredient.subcategoryId);
-            }
-        },
-    })
+    const { data: subcategories, isLoading: subcategoriesLoading } = useSubcategories(selectedCategoryId || 0)
 
     // Create form with default values
     const form = useForm<FormValues>({
@@ -178,63 +155,66 @@ export function IngredientForm() {
     // Update form values when ingredient data is loaded
     useEffect(() => {
         if (isEditing && ingredient) {
-            console.log("Setting form values from ingredient:", ingredient);
+            console.log("Setting form values from ingredient:", ingredient)
 
             // First set selected category to ensure subcategories are loaded
-            setSelectedCategoryId(ingredient.categoryId);
+            setSelectedCategoryId(ingredient.categoryId)
 
             // Mark that we're in the initial loading phase
-            setIsInitialLoad(true);
+            setIsInitialLoad(true)
 
             // Wait a bit longer to ensure subcategories are loaded
             setTimeout(() => {
                 // Reset form with ingredient data - keep all values including null and undefined
-                form.reset({
-                    name: ingredient.name,
-                    description: ingredient.description ?? "",
-                    categoryId: ingredient.categoryId,
-                    subcategoryId: ingredient.subcategoryId ?? null,
-                    defaultUnitId: ingredient.defaultUnitId,
-                    isPerishable: ingredient.isPerishable ?? false,
-                    storageType: ingredient.storageType,
-                    shelfLifeDays: ingredient.shelfLifeDays ?? null,
-                    storageInstructions: ingredient.storageInstructions ?? "",
-                    supplierInstructions: ingredient.supplierInstructions ?? "",
-                    supplierNotes: ingredient.supplierNotes ?? "",
-                    preferredSupplier: ingredient.preferredSupplier ?? "",
-                    orderLeadTimeDays: ingredient.orderLeadTimeDays ?? null,
-                    costPerUnitDollars: ingredient.costPerUnitDollars ?? null,
-                    packageSize: ingredient.packageSize ?? null,
-                    packageUnitId: ingredient.packageUnitId ?? null,
-                    isLocal: ingredient.isLocal ?? false,
-                    isOrganic: ingredient.isOrganic ?? false,
-                    isSeasonalItem: ingredient.isSeasonalItem ?? false,
-                    hasVariablePrice: ingredient.hasVariablePrice ?? false,
-                    isCommonAllergen: ingredient.isCommonAllergen ?? false,
-                    isSpecialOrder: ingredient.isSpecialOrder ?? false,
-                }, {
-                    keepDefaultValues: false,
-                    keepDirty: false,
-                    keepErrors: false,
-                    keepIsSubmitted: false,
-                    keepTouched: false,
-                    keepIsValid: false,
-                    keepSubmitCount: false
-                });
+                form.reset(
+                    {
+                        name: ingredient.name,
+                        description: ingredient.description ?? "",
+                        categoryId: ingredient.categoryId,
+                        subcategoryId: ingredient.subcategoryId ?? null,
+                        defaultUnitId: ingredient.defaultUnitId,
+                        isPerishable: ingredient.isPerishable ?? false,
+                        storageType: ingredient.storageType,
+                        shelfLifeDays: ingredient.shelfLifeDays ?? null,
+                        storageInstructions: ingredient.storageInstructions ?? "",
+                        supplierInstructions: ingredient.supplierInstructions ?? "",
+                        supplierNotes: ingredient.supplierNotes ?? "",
+                        preferredSupplier: ingredient.preferredSupplier ?? "",
+                        orderLeadTimeDays: ingredient.orderLeadTimeDays ?? null,
+                        costPerUnitDollars: ingredient.costPerUnitDollars ?? null,
+                        packageSize: ingredient.packageSize ?? null,
+                        packageUnitId: ingredient.packageUnitId ?? null,
+                        isLocal: ingredient.isLocal ?? false,
+                        isOrganic: ingredient.isOrganic ?? false,
+                        isSeasonalItem: ingredient.isSeasonalItem ?? false,
+                        hasVariablePrice: ingredient.hasVariablePrice ?? false,
+                        isCommonAllergen: ingredient.isCommonAllergen ?? false,
+                        isSpecialOrder: ingredient.isSpecialOrder ?? false,
+                    },
+                    {
+                        keepDefaultValues: false,
+                        keepDirty: false,
+                        keepErrors: false,
+                        keepIsSubmitted: false,
+                        keepTouched: false,
+                        keepIsValid: false,
+                        keepSubmitCount: false,
+                    },
+                )
 
                 // Log current form values to verify
-                console.log("Form values after reset:", form.getValues());
+                console.log("Form values after reset:", form.getValues())
 
                 // After a bit, mark initial load as complete
                 setTimeout(() => {
-                    setIsInitialLoad(false);
-                }, 100);
-            }, 300); // Increased timeout to ensure subcategories load
+                    setIsInitialLoad(false)
+                }, 100)
+            }, 300) // Increased timeout to ensure subcategories load
         } else {
             // For new ingredient form, mark initialLoad as false after a brief delay
             setTimeout(() => {
-                setIsInitialLoad(false);
-            }, 100);
+                setIsInitialLoad(false)
+            }, 100)
         }
     }, [isEditing, ingredient, form])
 
@@ -242,21 +222,21 @@ export function IngredientForm() {
     const watchedCategoryId = form.watch("categoryId")
 
     useEffect(() => {
-        console.log("watchedCategoryId changed:", watchedCategoryId);
+        console.log("watchedCategoryId changed:", watchedCategoryId)
 
         if (watchedCategoryId) {
             // Always set the selected category ID when it changes in the form
             if (watchedCategoryId !== selectedCategoryId) {
-                console.log("Setting selectedCategoryId to:", watchedCategoryId);
-                setSelectedCategoryId(watchedCategoryId);
+                console.log("Setting selectedCategoryId to:", watchedCategoryId)
+                setSelectedCategoryId(watchedCategoryId)
 
                 // Only clear subcategory when changing to a different category
                 // AND we're not in the initial load process
                 if (selectedCategoryId !== null && !isInitialLoad) {
-                    console.log("Clearing subcategoryId value - not in initial load");
-                    form.setValue("subcategoryId", null);
+                    console.log("Clearing subcategoryId value - not in initial load")
+                    form.setValue("subcategoryId", null)
                 } else {
-                    console.log("Preserving subcategoryId - in initial load or first category set");
+                    console.log("Preserving subcategoryId - in initial load or first category set")
                 }
             }
         }
@@ -290,27 +270,29 @@ export function IngredientForm() {
     }, [form.formState.errors])
 
     // Create or update mutation
-    const mutation = useMutation({
-        mutationFn: (values: FormValues) => {
-            console.log("Submitting form with values:", values)
-            if (isEditing && numericIngredientId) {
-                return ingredientApi.update(numericIngredientId, values)
-            } else {
-                return ingredientApi.create(values)
-            }
-        },
-        onSuccess: (data) => {
-            console.log("Mutation succeeded with data:", data)
-            queryClient.invalidateQueries({ queryKey: ["ingredients"] })
-            navigate({ to: "/ingredients" })
-        },
-        onError: (error) => {
-            console.error("Mutation failed with error:", error)
-        },
-    })
+    const createMutation = useCreateIngredient()
+    const updateMutation = useUpdateIngredient()
 
     const onSubmit = (values: FormValues) => {
-        mutation.mutate(values)
+        if (isEditing && numericIngredientId) {
+            updateMutation.mutate(
+                {
+                    id: numericIngredientId,
+                    data: values,
+                },
+                {
+                    onSuccess: () => {
+                        navigate({ to: "/ingredients" })
+                    },
+                },
+            )
+        } else {
+            createMutation.mutate(values, {
+                onSuccess: () => {
+                    navigate({ to: "/ingredients" })
+                },
+            })
+        }
     }
 
     // Handle loading state
@@ -369,17 +351,13 @@ export function IngredientForm() {
                         <ArrowLeft className="h-4 w-4" />
                     </Link>
                 </Button>
-                <h1 className="text-2xl font-bold">
-                    {isEditing ? `Editing: ${ingredient?.name}` : "Add Ingredient"}
-                </h1>
+                <h1 className="text-2xl font-bold">{isEditing ? `Editing: ${ingredient?.name}` : "Add Ingredient"}</h1>
             </div>
 
             {hasErrors && form.formState.submitCount > 0 && (
                 <Alert variant="destructive" className="mb-4">
                     <AlertCircle className="h-4 w-4 mr-2" />
-                    <AlertDescription>
-                        Please correct the errors in the form before submitting.
-                    </AlertDescription>
+                    <AlertDescription>Please correct the errors in the form before submitting.</AlertDescription>
                 </Alert>
             )}
 
@@ -391,9 +369,7 @@ export function IngredientForm() {
                             <CardHeader className="pb-2">
                                 <CardTitle className="flex items-center">
                                     Basic Information
-                                    {sectionErrors.basic && (
-                                        <AlertCircle className="h-4 w-4 ml-2 text-destructive" />
-                                    )}
+                                    {sectionErrors.basic && <AlertCircle className="h-4 w-4 ml-2 text-destructive" />}
                                 </CardTitle>
                                 <CardDescription>Essential ingredient details</CardDescription>
                             </CardHeader>
@@ -439,8 +415,8 @@ export function IngredientForm() {
                                                 </FormLabel>
                                                 <Select
                                                     onValueChange={(value) => {
-                                                        field.onChange(Number(value));
-                                                        console.log("Category selected:", value);
+                                                        field.onChange(Number(value))
+                                                        console.log("Category selected:", value)
                                                     }}
                                                     value={field.value?.toString() || ""}
                                                 >
@@ -477,9 +453,9 @@ export function IngredientForm() {
                                                 <Select
                                                     onValueChange={(value) => {
                                                         // Convert "none" string to null for the form value
-                                                        const numValue = value === "none" ? null : Number(value);
-                                                        field.onChange(numValue);
-                                                        console.log("Subcategory selected:", numValue);
+                                                        const numValue = value === "none" ? null : Number(value)
+                                                        field.onChange(numValue)
+                                                        console.log("Subcategory selected:", numValue)
                                                     }}
                                                     // Convert null/undefined to "none" for the Select component
                                                     value={field.value?.toString() || "none"}
@@ -528,8 +504,8 @@ export function IngredientForm() {
                                             </FormLabel>
                                             <Select
                                                 onValueChange={(value) => {
-                                                    field.onChange(Number(value));
-                                                    console.log("Default unit selected:", value);
+                                                    field.onChange(Number(value))
+                                                    console.log("Default unit selected:", value)
                                                 }}
                                                 value={field.value?.toString() || ""}
                                             >
@@ -564,9 +540,7 @@ export function IngredientForm() {
                             <CardHeader className="pb-2">
                                 <CardTitle className="flex items-center">
                                     Storage Information
-                                    {sectionErrors.storage && (
-                                        <AlertCircle className="h-4 w-4 ml-2 text-destructive" />
-                                    )}
+                                    {sectionErrors.storage && <AlertCircle className="h-4 w-4 ml-2 text-destructive" />}
                                 </CardTitle>
                                 <CardDescription>Storage conditions and shelf life</CardDescription>
                             </CardHeader>
@@ -665,9 +639,7 @@ export function IngredientForm() {
                             <CardHeader className="pb-2">
                                 <CardTitle className="flex items-center">
                                     Supplier Information
-                                    {sectionErrors.supplier && (
-                                        <AlertCircle className="h-4 w-4 ml-2 text-destructive" />
-                                    )}
+                                    {sectionErrors.supplier && <AlertCircle className="h-4 w-4 ml-2 text-destructive" />}
                                 </CardTitle>
                                 <CardDescription>Sourcing details</CardDescription>
                             </CardHeader>
@@ -766,8 +738,8 @@ export function IngredientForm() {
                                                     <FormLabel>Pkg Unit</FormLabel>
                                                     <Select
                                                         onValueChange={(value) => {
-                                                            const numValue = value === "none" ? null : Number(value);
-                                                            field.onChange(numValue);
+                                                            const numValue = value === "none" ? null : Number(value)
+                                                            field.onChange(numValue)
                                                         }}
                                                         value={field.value?.toString() || "none"}
                                                     >
@@ -833,9 +805,7 @@ export function IngredientForm() {
                             <CardHeader className="pb-2">
                                 <CardTitle className="flex items-center">
                                     Additional Attributes
-                                    {sectionErrors.attributes && (
-                                        <AlertCircle className="h-4 w-4 ml-2 text-destructive" />
-                                    )}
+                                    {sectionErrors.attributes && <AlertCircle className="h-4 w-4 ml-2 text-destructive" />}
                                 </CardTitle>
                                 <CardDescription>Other ingredient properties</CardDescription>
                             </CardHeader>
@@ -951,8 +921,10 @@ export function IngredientForm() {
                         <Button type="button" variant="outline" onClick={() => navigate({ to: "/ingredients" })}>
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={mutation.isPending}>
-                            {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                            {(createMutation.isPending || updateMutation.isPending) && (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
                             <Save className="mr-2 h-4 w-4" />
                             {isEditing ? "Update Ingredient" : "Create Ingredient"}
                         </Button>

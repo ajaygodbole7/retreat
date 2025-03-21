@@ -1,7 +1,7 @@
 "use client"
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { useNavigate, useRouter, useParams } from "@tanstack/react-router"
+import { useState } from "react"
+import { useNavigate, useParams, Link } from "@tanstack/react-router"
 import { Button } from "../../components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Badge } from "../../components/ui/badge"
@@ -17,50 +17,32 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "../../components/ui/alert-dialog"
-import { ingredientApi } from "../../lib/api"
 import { Edit, Trash2, ArrowLeft, Loader2, Star, Truck, DollarSign, Calendar } from "lucide-react"
-import { Link } from "@tanstack/react-router"
-import { useState, useEffect } from "react"
+import { useIngredient, useDeleteIngredient } from "../../hooks/useIngredients"
 
 export function IngredientDetail() {
     // Get the route params correctly from TanStack Router
-    // Get the route params correctly from TanStack Router
-    const params = useParams({ from: "/ingredients/$ingredientId" });
-    //const params = useParams()
+    const params = useParams({ from: "/ingredients/$ingredientId" })
     const { ingredientId } = params
     console.log("IngredientDetail - Route Params:", params)
-
-    const router = useRouter()
-    console.log("IngredientDetail - Route:", router.state.location.pathname)
 
     const numericIngredientId = Number.parseInt(ingredientId)
     console.log("Parsed numericIngredientId:", numericIngredientId)
 
     const navigate = useNavigate()
-    const queryClient = useQueryClient()
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
-    const {
-        data: ingredient,
-        isLoading,
-        error,
-    } = useQuery({
-        queryKey: ["ingredient", numericIngredientId],
-        queryFn: () => ingredientApi.getById(numericIngredientId),
-        enabled: !isNaN(numericIngredientId) && numericIngredientId > 0,
-    })
+    const { data: ingredient, isLoading, error } = useIngredient(numericIngredientId)
 
-    useEffect(() => {
-        console.log("Ingredient data received:", ingredient)
-    }, [ingredient])
+    const deleteMutation = useDeleteIngredient()
 
-    const deleteMutation = useMutation({
-        mutationFn: () => ingredientApi.delete(numericIngredientId),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["ingredients"] })
-            navigate({ to: "/ingredients" })
-        },
-    })
+    const handleDelete = () => {
+        deleteMutation.mutate(numericIngredientId, {
+            onSuccess: () => {
+                navigate({ to: "/ingredients" })
+            },
+        })
+    }
 
     if (isLoading) {
         return (
@@ -133,7 +115,7 @@ export function IngredientDetail() {
                             <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction
-                                    onClick={() => deleteMutation.mutate()}
+                                    onClick={handleDelete}
                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
                                     {deleteMutation.isPending ? (

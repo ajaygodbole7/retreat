@@ -75,7 +75,7 @@ model Ingredient {
   substitutes          IngredientSubstitute[]  @relation("OriginalIngredient")
   substituteFor        IngredientSubstitute[]  @relation("SubstituteIngredient")
   densityConversions   IngredientDensity[]
-  // New recipe relations
+  // Recipe relations
   recipeIngredients    RecipeIngredient[]     // Relation to recipes that use this ingredient
   alternateFor         RecipeIngredient[] @relation("AlternateIngredient") // Relation to recipes where this is an alternate
   
@@ -120,7 +120,7 @@ model IngredientSubcategory {
   // Relationships
   ingredients          Ingredient[]
   
-// Tracking
+  // Tracking
   createdBy            String?          @map("created_by")
   createdAt            DateTime         @default(now()) @map("created_at")
   lastUpdatedBy        String?          @map("last_updated_by") 
@@ -210,15 +210,17 @@ model UnitOfMeasure {
   volumeDensities      IngredientDensity[] @relation("VolumeUnit")
   weightDensities      IngredientDensity[] @relation("WeightUnit")
   
-// Tracking
+  // Tracking
   createdBy            String?          @map("created_by")
   createdAt            DateTime         @default(now()) @map("created_at")
   lastUpdatedBy        String?          @map("last_updated_by") 
   updatedAt            DateTime         @updatedAt @map("updated_at")
   
+  // Recipe relationships
+  recipeIngredients    RecipeIngredient[]
+  
   @@index([system])
   @@index([type])
-  RecipeIngredient RecipeIngredient[]
 }
 
 model IngredientDensity {
@@ -264,7 +266,7 @@ enum CookingMethod {
 
 // Recipe model
 model Recipe {
-  id                   Int              @id @default(autoincrement()) @map("recipe_id")
+  id                   Int              @id @default(autoincrement()) @map("recipe_id") 
   name                 String
   description          String?
   servingSize          Int              @default(8) @map("serving_size")
