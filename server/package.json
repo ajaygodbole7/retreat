@@ -18,7 +18,8 @@
     "seed:dairy": "ts-node prisma/seed/seed-dairy-ingredients.ts",
     "seed:frozenveg": "ts-node prisma/seed/seed-frozenveg-ingredients.ts",
     "seed:ready": "ts-node prisma/seed/seed-ready-ingredients.ts",
-    "seed:fruit": "ts-node prisma/seed/seed-fruit-ingredients.ts"
+    "seed:fruit": "ts-node prisma/seed/seed-fruit-ingredients.ts",
+    "seed:recipes": "ts-node prisma/seed/seed-recipes.ts"
   },
   "keywords": [],
   "author": "",

@@ -34,6 +34,13 @@ export const getRecipesQuerySchema = z.object({
     search: z.string().optional()
 });
 
+// Schema for scaling a recipe
+export const scaleRecipeQuerySchema = z.object({
+    targetServingSize: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
+        message: "Target serving size must be a positive number",
+    }),
+})
+
 // Schema for creating a new recipe step
 export const createRecipeStepSchema = z.object({
     recipeId: z.number().int().positive('Recipe ID must be a positive integer'),
@@ -67,6 +74,45 @@ export const updateRecipeIngredientSchema = createRecipeIngredientSchema
     .omit({ recipeId: true, ingredientId: true })
     .partial();
 
+// Schema for creating a complete recipe with ingredients and steps
+export const createCompleteRecipeSchema = z.object({
+    recipe: createRecipeSchema,
+    ingredients: z.array(createRecipeIngredientSchema.omit({ recipeId: true })).optional(),
+    steps: z.array(createRecipeStepSchema.omit({ recipeId: true })).optional(),
+})
+
+// Schema for updating a complete recipe with ingredients and steps
+export const updateCompleteRecipeSchema = z.object({
+    recipe: updateRecipeSchema,
+    ingredients: z
+        .array(
+            z.object({
+                id: z.number().int().positive().optional(),
+                ingredientId: z.number().int().positive("Ingredient ID must be a positive integer"),
+                quantity: z.number().positive("Quantity must be a positive number"),
+                unitId: z.number().int().positive("Unit ID must be a positive integer"),
+                preparation: z.string().optional().nullable(),
+                isOptional: z.boolean().default(false),
+                displayOrder: z.number().int().nonnegative().default(0),
+                notes: z.string().optional().nullable(),
+                scalingFactor: z.number().positive().default(1.0),
+                alternateIngredientId: z.number().int().positive().optional().nullable(),
+            }),
+        )
+        .optional(),
+    steps: z
+        .array(
+            z.object({
+                id: z.number().int().positive().optional(),
+                stepNumber: z.number().int().nonnegative("Step number must be a non-negative integer"),
+                instruction: z.string().min(1, "Instruction is required"),
+                estimatedTimeMinutes: z.number().int().positive().optional().nullable(),
+                isOptional: z.boolean().default(false),
+            }),
+        )
+        .optional(),
+})
+
 // Type definitions based on the schemas
 export type CreateRecipeInput = z.infer<typeof createRecipeSchema>;
 export type UpdateRecipeInput = z.infer<typeof updateRecipeSchema>;
@@ -75,3 +121,6 @@ export type CreateRecipeStepInput = z.infer<typeof createRecipeStepSchema>;
 export type UpdateRecipeStepInput = z.infer<typeof updateRecipeStepSchema>;
 export type CreateRecipeIngredientInput = z.infer<typeof createRecipeIngredientSchema>;
 export type UpdateRecipeIngredientInput = z.infer<typeof updateRecipeIngredientSchema>;
+export type ScaleRecipeQuery = z.infer<typeof scaleRecipeQuerySchema>
+export type CreateCompleteRecipeInput = z.infer<typeof createCompleteRecipeSchema>
+export type UpdateCompleteRecipeInput = z.infer<typeof updateCompleteRecipeSchema>

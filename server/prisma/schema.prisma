@@ -31,10 +31,62 @@ enum UnitType {
   TEMPERATURE
 }
 
+// Recipe-related enums
+enum CourseType {
+  MAIN_COURSE
+  SIDE_DISH
+  APPETIZER 
+  DESSERT
+  BEVERAGE
+  BREAKFAST
+  SNACK
+}
+
+enum CookingMethod {
+  STOVETOP
+  PRESSURE_COOKER
+  OVEN
+  NO_COOK
+  SLOW_COOK
+  STEAM
+}
+
+enum MealType {
+  BREAKFAST
+  MORNING_SNACK
+  LUNCH
+  AFTERNOON_SNACK
+  DINNER
+  BRUNCH
+  LIGHT_SNACKS
+}
+
+enum EventType {
+  RETREAT
+  PRANAM
+  TALK
+  EVENING_PROGRAM
+  SCREENING
+}
+
+enum EventPhase {
+  PRE_RETREAT
+  MAIN_RETREAT
+  POST_RETREAT
+}
+
+enum EventStatus {
+  PLANNING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+
 // INGREDIENT CORE MODELS
 model Ingredient {
   id                   Int              @id @default(autoincrement()) @map("ingredient_id")
-  name                 String
+  name                 String           @unique
   description          String?
   categoryId           Int              @map("category_id")
   category             IngredientCategory @relation(fields: [categoryId], references: [id])
@@ -78,6 +130,7 @@ model Ingredient {
   // Recipe relations
   recipeIngredients    RecipeIngredient[]     // Relation to recipes that use this ingredient
   alternateFor         RecipeIngredient[] @relation("AlternateIngredient") // Relation to recipes where this is an alternate
+  eventDayConsumables  EventDayConsumable[]   // << Where this ingredient is used as a daily consumable
   
   // Tracking
   createdBy            String?          @map("created_by")
@@ -218,9 +271,12 @@ model UnitOfMeasure {
   
   // Recipe relationships
   recipeIngredients    RecipeIngredient[]
+  eventDayConsumables  EventDayConsumable[] // << Where this unit is used for daily consumables
   
   @@index([system])
   @@index([type])
+  @@index([baseUnitId])
+  @@index([equivalentUnitId])
 }
 
 model IngredientDensity {
@@ -244,30 +300,12 @@ model IngredientDensity {
   @@unique([ingredientId, volumeUnitId, weightUnitId])
 }
 
-// Recipe-related enums
-enum CourseType {
-  MAIN_COURSE
-  SIDE_DISH
-  APPETIZER 
-  DESSERT
-  BEVERAGE
-  BREAKFAST
-  SNACK
-}
 
-enum CookingMethod {
-  STOVETOP
-  PRESSURE_COOKER
-  OVEN
-  NO_COOK
-  SLOW_COOK
-  STEAM
-}
 
 // Recipe model
 model Recipe {
   id                   Int              @id @default(autoincrement()) @map("recipe_id") 
-  name                 String
+  name                 String           @unique
   description          String?
   servingSize          Int              @default(8) @map("serving_size")
   preparationTimeMinutes Int?           @map("preparation_time_minutes")
@@ -280,7 +318,7 @@ model Recipe {
   cookingEquipment     String?          @map("cooking_equipment") 
   
   // Dietary info
-  hasOnionGarlic       Boolean          @default(true) @map("has_onion_garlic")
+  hasOnionGarlic       Boolean          @default(false) @map("has_onion_garlic")
   isGlutenFree         Boolean          @default(false) @map("is_gluten_free")
   isVegan              Boolean          @default(false) @map("is_vegan")
   
@@ -291,6 +329,8 @@ model Recipe {
   // Relationships
   recipeIngredients    RecipeIngredient[]
   steps                RecipeStep[]     // Relationship to steps
+  menuItems            MenuRecipe[]     // Which menu templates use this recipe
+  scheduledMeals       ScheduledMealRecipe[] // Which specific meals serve this recipe
   
   // Tracking
   createdAt            DateTime         @default(now()) @map("created_at")
@@ -354,4 +394,166 @@ model RecipeIngredient {
   @@index([recipeId])
   @@index([ingredientId])
   @@index([alternateIngredientId])
+}
+
+// --- Event & Planning Models ---
+
+model Event {
+  id                   Int           @id @default(autoincrement()) @map("event_id")
+  eventName            String        @unique
+  description          String?
+  eventType            EventType     @default(RETREAT)
+  eventStartDate       DateTime      @map("start_date")
+  eventEndDate         DateTime      @map("end_date")
+  location             String?
+  defaultAttendeeCount Int           @default(0) @map("default_attendee_count") // Reference count
+  defaultVolunteerCount Int          @default(0) @map("default_volunteer_count") // Reference count
+  status               EventStatus   @default(PLANNING)
+
+  // Relationships
+  days                 EventDay[]    // Event consists of multiple days
+
+  // Tracking
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+  createdBy            String?       @map("created_by")
+  lastUpdatedBy        String?       @map("last_updated_by")
+
+  @@index([eventName])
+  @@index([eventStartDate, eventEndDate])
+  @@index([eventType])
+  @@index([status])
+}
+
+model EventDay {
+  id             Int           @id @default(autoincrement()) @map("event_day_id")
+  eventId        Int           @map("event_id")
+  event          Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  date           DateTime      @map("date") @db.Date
+  dayNumber      Int           @map("day_number")
+  phase          EventPhase    @default(MAIN_RETREAT)
+  notes          String?
+
+  // Relationships
+  scheduledMeals ScheduledMeal[]     // Meals scheduled for this day
+  consumables    EventDayConsumable[] // Consumables needed for this specific day
+
+  // Tracking
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  createdBy      String?       @map("created_by")
+  lastUpdatedBy  String?       @map("last_updated_by")
+
+  @@unique([eventId, dayNumber])
+  @@unique([eventId, date])
+  @@index([eventId])
+  @@index([date])
+  @@index([phase])
+}
+
+model Menu { // Reusable template
+  id          Int      @id @default(autoincrement()) @map("menu_id")
+  name        String   @unique
+  description String?
+  mealType    MealType? @map("meal_type")
+
+  scheduledMeals ScheduledMeal[]  // << The specific meals using this menu template
+
+  // ** MODIFIED: Renamed back to MenuRecipe **
+  menuItems   MenuRecipe[] // Link to recipes in this menu template
+
+  // Tracking
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdBy   String?  @map("created_by")
+  lastUpdatedBy String? @map("last_updated_by")
+
+  @@index([name])
+  @@index([mealType])
+}
+
+// ** MODIFIED: Renamed back from MenuItem **
+model MenuRecipe { // Joins Menu template and Recipe
+  id           Int      @id @default(autoincrement()) @map("menu_recipe_id") // Updated map name
+  menuId       Int      @map("menu_id")
+  menu         Menu     @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  recipeId     Int      @map("recipe_id")
+  recipe       Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  displayOrder Int      @default(0) @map("display_order")
+
+  // Tracking
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([menuId, recipeId])
+  @@index([menuId])
+  @@index([recipeId])
+}
+
+model ScheduledMeal { // Specific meal instance
+  id                 Int      @id @default(autoincrement()) @map("scheduled_meal_id")
+  dayId              Int      @map("day_id")
+  day                EventDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  time               DateTime @map("time") @db.Time // Time only
+  mealType           MealType @map("meal_type")
+  attendeeHeadcount  Int      @default(0) @map("attendee_headcount") // Specific to this meal
+  volunteerHeadcount Int      @default(0) @map("volunteer_headcount") // Specific to this meal
+  menuId             Int?     @map("menu_id") // Optional link to a Menu template
+  menu               Menu?    @relation(fields: [menuId], references: [id], onDelete: SetNull)
+
+  // Direct link to recipes for THIS meal instance
+  scheduledMealRecipes ScheduledMealRecipe[]
+
+  notes              String?
+
+  // Tracking
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  createdBy          String?  @map("created_by")
+  lastUpdatedBy      String?  @map("last_updated_by")
+
+  @@index([dayId])
+  @@index([menuId])
+  @@index([mealType])
+}
+
+model ScheduledMealRecipe { // Joins ScheduledMeal instance and Recipe
+  id              Int      @id @default(autoincrement()) @map("scheduled_meal_recipe_id")
+  scheduledMealId Int      @map("scheduled_meal_id")
+  scheduledMeal   ScheduledMeal @relation(fields: [scheduledMealId], references: [id], onDelete: Cascade)
+  recipeId        Int      @map("recipe_id")
+  recipe          Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  // Tracking
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([scheduledMealId, recipeId])
+  @@index([scheduledMealId])
+  @@index([recipeId])
+}
+
+// ** For tracking consumables PER DAY **
+model EventDayConsumable {
+  id                Int      @id @default(autoincrement()) @map("event_day_consumable_id")
+  dayId             Int      @map("day_id")
+  day               EventDay @relation(fields: [dayId], references: [id], onDelete: Cascade) // Delete if day deleted
+  ingredientId      Int      @map("ingredient_id")
+  ingredient        Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict) // Prevent deleting ingredient if used
+  estimatedQuantity Float    @map("estimated_quantity") // Amount needed for THIS DAY
+  unitId            Int      @map("unit_id")
+  unit              UnitOfMeasure @relation(fields: [unitId], references: [id], onDelete: Restrict) // Prevent deleting unit
+  notes             String?  // e.g., "For breaks", "Tea station"
+  purchaseTiming    String?  // Optional: "Pre-Event", "Day 1 Purchase", etc.
+
+  // Tracking
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  lastUpdatedBy String? @map("last_updated_by")
+
+  @@unique([dayId, ingredientId]) // Only one entry per ingredient per day
+  @@index([dayId])
+  @@index([ingredientId])
+  @@index([unitId])
 }

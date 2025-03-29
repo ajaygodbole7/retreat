@@ -5,32 +5,18 @@ import { Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card"
-import {
-    Apple,
-    ChefHat,
-    ShoppingCart,
-    Package,
-    Calendar,
-    ArrowRight,
-    Loader2,
-    Users,
-    Clock,
-    BarChart,
-    Utensils,
-    FileText,
-    Percent,
-    DollarSign,
-    Truck,
-    AlertTriangle,
-    Leaf,
-} from "lucide-react"
+import { Apple, ChefHat, ShoppingCart, Package, Calendar, ArrowRight, Loader2, Utensils } from "lucide-react"
 import { ingredientApi, categoryApi, unitApi } from "../lib/api"
+import { recipeService } from "../services/recipe-service"
+import { RecipeCard } from "../components/recipe/RecipeCard"
+import { safeMap, ensureArray } from "../utils/array-utils"
 
 export function Dashboard() {
     const [stats, setStats] = useState({
         ingredientCount: 0,
         categoryCount: 0,
         unitCount: 0,
+        recipeCount: 0,
     })
 
     // Fetch ingredients
@@ -51,18 +37,23 @@ export function Dashboard() {
         queryFn: () => unitApi.getAll(),
     })
 
+    // Fetch recipes
+    const { data: recipes, isLoading: recipesLoading } = useQuery({
+        queryKey: ["dashboard-recipes"],
+        queryFn: () => recipeService.getAll({ limit: 3 }),
+    })
+
     // Update stats when data is loaded
     useEffect(() => {
-        if (ingredients && categories && units) {
-            setStats({
-                ingredientCount: ingredients.length,
-                categoryCount: categories.length,
-                unitCount: units.length,
-            })
-        }
-    }, [ingredients, categories, units])
+        setStats({
+            ingredientCount: ensureArray(ingredients).length,
+            categoryCount: ensureArray(categories).length,
+            unitCount: ensureArray(units).length,
+            recipeCount: ensureArray(recipes).length,
+        })
+    }, [ingredients, categories, units, recipes])
 
-    const isLoading = ingredientsLoading || categoriesLoading || unitsLoading
+    const isLoading = ingredientsLoading || categoriesLoading || unitsLoading || recipesLoading
 
     if (isLoading) {
         return (
@@ -71,6 +62,9 @@ export function Dashboard() {
             </div>
         )
     }
+
+    // Ensure recipes is an array
+    const recipeArray = ensureArray(recipes)
 
     return (
         <div className="container mx-auto py-10">
@@ -81,8 +75,9 @@ export function Dashboard() {
                 </p>
             </div>
 
-            {/* Main Feature Card - Ingredients */}
-            <div className="mb-10">
+            {/* Main Feature Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                {/* Ingredients Card */}
                 <Card className="overflow-hidden">
                     <div className="md:flex">
                         <div className="md:w-2/3 p-6">
@@ -128,7 +123,74 @@ export function Dashboard() {
                         </div>
                     </div>
                 </Card>
+
+                {/* Recipes Card */}
+                <Card className="overflow-hidden">
+                    <div className="md:flex">
+                        <div className="md:w-2/3 p-6">
+                            <CardHeader className="px-0">
+                                <CardTitle className="text-2xl">Recipe Collection</CardTitle>
+                                <CardDescription>Create, organize, and scale recipes for your retreats</CardDescription>
+                            </CardHeader>
+                            <CardContent className="px-0 py-4">
+                                <div className="grid grid-cols-3 gap-4 mb-4">
+                                    <div className="bg-muted rounded-md p-3 text-center">
+                                        <div className="text-2xl font-bold">{stats.recipeCount}</div>
+                                        <p className="text-xs text-muted-foreground">Recipes</p>
+                                    </div>
+                                    <div className="bg-muted rounded-md p-3 text-center">
+                                        <div className="text-2xl font-bold">7</div>
+                                        <p className="text-xs text-muted-foreground">Categories</p>
+                                    </div>
+                                    <div className="bg-muted rounded-md p-3 text-center">
+                                        <div className="text-2xl font-bold">∞</div>
+                                        <p className="text-xs text-muted-foreground">Servings</p>
+                                    </div>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    Build your recipe library with detailed instructions, ingredient lists, and automatic scaling for any
+                                    group size.
+                                </p>
+                            </CardContent>
+                            <CardFooter className="px-0 pt-2">
+                                <Link to="/recipes" className="w-full md:w-auto">
+                                    <Button className="w-full md:w-auto">
+                                        Go to Recipes
+                                        <ArrowRight className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </Link>
+                            </CardFooter>
+                        </div>
+                        <div className="md:w-1/3 bg-muted flex items-center justify-center p-6">
+                            <div className="text-center">
+                                <ChefHat className="h-16 w-16 mx-auto text-primary mb-4" />
+                                <p className="font-medium">Recipe Management</p>
+                                <p className="text-sm text-muted-foreground mt-1">Create and scale recipes with ease</p>
+                            </div>
+                        </div>
+                    </div>
+                </Card>
             </div>
+
+            {/* Recent Recipes Section */}
+            {recipeArray.length > 0 && (
+                <div className="mb-10">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-bold">Recent Recipes</h2>
+                        <Link to="/recipes">
+                            <Button variant="outline">
+                                View All
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        </Link>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {safeMap(recipeArray, (recipe, index) => (
+                            <RecipeCard key={recipe.id || index} recipe={recipe} showActions={false} />
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* All Modules Section */}
             <h2 className="text-2xl font-bold mb-6">All Modules</h2>
@@ -149,18 +211,18 @@ export function Dashboard() {
                     </CardFooter>
                 </Card>
 
-                <Card className="opacity-70">
+                <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Recipes</CardTitle>
-                        <ChefHat className="h-4 w-4 text-muted-foreground" />
+                        <ChefHat className="h-4 w-4 text-primary" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">Coming Soon</div>
+                        <div className="text-2xl font-bold">Active</div>
                         <p className="text-xs text-muted-foreground">Create and manage recipes</p>
                     </CardContent>
                     <CardFooter>
-                        <Link to="/coming-soon" className="w-full">
-                            <Button className="w-full">Preview</Button>
+                        <Link to="/recipes" className="w-full">
+                            <Button className="w-full">Go to Recipes</Button>
                         </Link>
                     </CardFooter>
                 </Card>
@@ -204,12 +266,28 @@ export function Dashboard() {
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     <Card>
                         <CardHeader>
+                            <CardTitle className="text-lg">Add New Recipe</CardTitle>
+                            <CardDescription>Create a new recipe in the database</CardDescription>
+                        </CardHeader>
+                        <CardFooter>
+                            <Link to="/recipes/new" className="w-full">
+                                <Button variant="outline" className="w-full">
+                                    <ChefHat className="mr-2 h-4 w-4" />
+                                    Add Recipe
+                                </Button>
+                            </Link>
+                        </CardFooter>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
                             <CardTitle className="text-lg">Add New Ingredient</CardTitle>
                             <CardDescription>Create a new ingredient in the database</CardDescription>
                         </CardHeader>
                         <CardFooter>
                             <Link to="/ingredients/new" className="w-full">
                                 <Button variant="outline" className="w-full">
+                                    <Apple className="mr-2 h-4 w-4" />
                                     Add Ingredient
                                 </Button>
                             </Link>
@@ -218,27 +296,14 @@ export function Dashboard() {
 
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-lg">Manage Categories</CardTitle>
-                            <CardDescription>Organize your ingredient categories</CardDescription>
+                            <CardTitle className="text-lg">Browse Recipes</CardTitle>
+                            <CardDescription>Explore your recipe collection</CardDescription>
                         </CardHeader>
                         <CardFooter>
-                            <Link to="/ingredients?categoryId=all" className="w-full">
+                            <Link to="/recipes" className="w-full">
                                 <Button variant="outline" className="w-full">
-                                    View Categories
-                                </Button>
-                            </Link>
-                        </CardFooter>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">Measurement Units</CardTitle>
-                            <CardDescription>Configure measurement units and conversions</CardDescription>
-                        </CardHeader>
-                        <CardFooter>
-                            <Link to="/ingredients?view=units" className="w-full">
-                                <Button variant="outline" className="w-full">
-                                    Manage Units
+                                    <Utensils className="mr-2 h-4 w-4" />
+                                    Browse Recipes
                                 </Button>
                             </Link>
                         </CardFooter>
@@ -246,7 +311,7 @@ export function Dashboard() {
                 </div>
             </div>
 
-            {/* Future Features Preview - Enhanced from the old dashboard */}
+            {/* Future Features Preview */}
             <div className="mt-10 bg-muted rounded-lg p-6">
                 <h2 className="text-2xl font-bold mb-4">Coming Soon</h2>
                 <p className="text-muted-foreground mb-6">
@@ -282,190 +347,8 @@ export function Dashboard() {
                     </div>
                 </div>
             </div>
-
-            {/* New Section: Advanced Features (from ingredients dashboard) */}
-            <div className="mt-10">
-                <h2 className="text-2xl font-bold mb-6">Advanced Features</h2>
-                <div className="grid gap-6 md:grid-cols-3">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center space-x-2">
-                            <div className="rounded-full bg-primary/10 p-2">
-                                <Users className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                                <CardTitle>Retreat Planning</CardTitle>
-                                <CardDescription>Manage meals for groups</CardDescription>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm">
-                                Plan meals for retreats of any size with automatic scaling and dietary accommodations
-                            </p>
-                        </CardContent>
-                        <CardFooter>
-                            <Link to="/coming-soon" className="w-full">
-                                <Button variant="outline" className="w-full">
-                                    Learn More
-                                </Button>
-                            </Link>
-                        </CardFooter>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center space-x-2">
-                            <div className="rounded-full bg-primary/10 p-2">
-                                <Clock className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                                <CardTitle>Meal Scheduling</CardTitle>
-                                <CardDescription>Organize retreat menus</CardDescription>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm">Create detailed meal schedules for multi-day retreats with prep timelines</p>
-                        </CardContent>
-                        <CardFooter>
-                            <Link to="/coming-soon" className="w-full">
-                                <Button variant="outline" className="w-full">
-                                    Learn More
-                                </Button>
-                            </Link>
-                        </CardFooter>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center space-x-2">
-                            <div className="rounded-full bg-primary/10 p-2">
-                                <BarChart className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                                <CardTitle>Cost Analysis</CardTitle>
-                                <CardDescription>Budget management</CardDescription>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm">Track ingredient costs and analyze meal expenses for better budget planning</p>
-                        </CardContent>
-                        <CardFooter>
-                            <Link to="/coming-soon" className="w-full">
-                                <Button variant="outline" className="w-full">
-                                    Learn More
-                                </Button>
-                            </Link>
-                        </CardFooter>
-                    </Card>
-                </div>
-            </div>
-
-            {/* New Section: Additional Planned Features */}
-            <div className="mt-10">
-                <h2 className="text-2xl font-bold mb-6">Planned Features</h2>
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Recipe Library</CardTitle>
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">
-                                Create, store, and organize recipes with detailed instructions and ingredient lists
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Nutritional Analysis</CardTitle>
-                            <Percent className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">
-                                Calculate nutritional information for recipes and meal plans
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Budget Tracking</CardTitle>
-                            <DollarSign className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">
-                                Monitor costs and stay within budget for retreat meal planning
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Supplier Management</CardTitle>
-                            <Truck className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">
-                                Track suppliers, pricing, and order information for ingredients
-                            </p>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
-
-            {/* New Section: Specialized Features */}
-            <div className="mt-10">
-                <h2 className="text-2xl font-bold mb-6">Specialized Features</h2>
-                <div className="grid gap-6 md:grid-cols-3">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center space-x-2">
-                            <div className="rounded-full bg-primary/10 p-2">
-                                <AlertTriangle className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                                <CardTitle>Allergen Tracking</CardTitle>
-                                <CardDescription>Food safety management</CardDescription>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm">
-                                Identify and track common allergens in ingredients and recipes to ensure guest safety
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center space-x-2">
-                            <div className="rounded-full bg-primary/10 p-2">
-                                <Utensils className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                                <CardTitle>Dietary Accommodations</CardTitle>
-                                <CardDescription>Special diet planning</CardDescription>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm">Easily plan for vegetarian, vegan, gluten-free, and other dietary requirements</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center space-x-2">
-                            <div className="rounded-full bg-primary/10 p-2">
-                                <Leaf className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                                <CardTitle>Sustainability Metrics</CardTitle>
-                                <CardDescription>Environmental impact</CardDescription>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm">Track local, organic, and seasonal ingredients to measure environmental impact</p>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
         </div>
     )
 }
 
 export default Dashboard
-

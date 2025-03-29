@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from "express"
-import { PrismaClient } from "@prisma/client"
+import prisma from "../lib/prisma" // Use singleton pattern
+import { AppError } from "../middleware/errorHandler"
 import {
     CreateIngredientInput,
     UpdateIngredientInput,
     IngredientFilters
 } from "../types/ingredient-types"
 
-const prisma = new PrismaClient()
 
 /**
  * Get all ingredients with optional filtering
@@ -143,12 +143,14 @@ export const createIngredient = async (req: Request, res: Response, next: NextFu
             isSpecialOrder: ingredientData.isSpecialOrder
         }
 
-        const ingredient = await prisma.ingredient.create({
-            data: transformedData,
-            include: {
-                category: true,
-                defaultUnit: true
-            }
+        const ingredient = await prisma.$transaction(async (tx) => {
+            tx.ingredient.create({
+                data: transformedData,
+                include: {
+                    category: true,
+                    defaultUnit: true
+                }
+            })
         })
 
         res.status(201).json(ingredient)
@@ -163,17 +165,29 @@ export const createIngredient = async (req: Request, res: Response, next: NextFu
 export const updateIngredient = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { id } = req.params
+        const ingredientId = parseInt(id)
         const ingredientData: UpdateIngredientInput = req.body
 
-        const ingredient = await prisma.ingredient.update({
-            where: { id: parseInt(id) },
-            data: ingredientData,
-            include: {
-                category: true,
-                subcategory: true,
-                defaultUnit: true,
-                packageUnit: true,
+        const ingredient = await prisma.$transaction(async (tx) => {
+            // Check if ingredient exists before updating
+            const exists = await tx.ingredient.findUnique({
+                where: { id: ingredientId }
+            })
+
+            if (!exists) {
+                throw new AppError("Ingredient not found", 404)
             }
+
+            return tx.ingredient.update({
+                where: { id: ingredientId },
+                data: ingredientData,
+                include: {
+                    category: true,
+                    subcategory: true,
+                    defaultUnit: true,
+                    packageUnit: true,
+                }
+            })
         })
 
         res.json(ingredient)
@@ -188,9 +202,36 @@ export const updateIngredient = async (req: Request, res: Response, next: NextFu
 export const deleteIngredient = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { id } = req.params
+        const ingredientId = parseInt(id)
 
-        await prisma.ingredient.delete({
-            where: { id: parseInt(id) },
+        // Use transaction for ingredient deletion
+        await prisma.$transaction(async (tx) => {
+            // Check if ingredient exists
+            const exists = await tx.ingredient.findUnique({
+                where: { id: ingredientId }
+            })
+
+            if (!exists) {
+                throw new AppError("Ingredient not found", 404)
+            }
+
+            // Check if ingredient is used in any recipes
+            const recipeIngredients = await tx.recipeIngredient.findFirst({
+                where: {
+                    OR: [
+                        { ingredientId },
+                        { alternateIngredientId: ingredientId }
+                    ]
+                }
+            })
+
+            if (recipeIngredients) {
+                throw new AppError("Cannot delete ingredient that is used in recipes", 400)
+            }
+
+            await tx.ingredient.delete({
+                where: { id: ingredientId },
+            })
         })
 
         res.json({ message: "Ingredient deleted successfully" })

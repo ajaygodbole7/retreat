@@ -60,13 +60,15 @@ export const createCategory = async (
     try {
         const categoryData = req.body;
 
-        const category = await prisma.ingredientCategory.create({
-            data: {
-                name: categoryData.name,
-                description: categoryData.description,
-                storeSection: categoryData.storeSection,
-                displayOrder: categoryData.displayOrder ?? 0
-            }
+        const category = await prisma.$transaction(async (tx) => {
+            return tx.ingredientCategory.create({
+                data: {
+                    name: categoryData.name,
+                    description: categoryData.description,
+                    storeSection: categoryData.storeSection,
+                    displayOrder: categoryData.displayOrder ?? 0
+                }
+            });
         });
 
         res.status(201).json(category);
@@ -82,12 +84,25 @@ export const updateCategory = async (
 ): Promise<void> => {
     try {
         const { id } = req.params;
+        const categoryId = Number(id);
         const updateData = req.body;
 
-        const category = await prisma.ingredientCategory.update({
-            where: { id: Number(id) },
-            data: updateData
+        const category = await prisma.$transaction(async (tx) => {
+            // First check if category exists
+            const existingCategory = await tx.ingredientCategory.findUnique({
+                where: { id: categoryId }
+            });
+
+            if (!existingCategory) {
+                throw new AppError('Category not found', 404);
+            }
+
+            return tx.ingredientCategory.update({
+                where: { id: categoryId },
+                data: updateData
+            });
         });
+
 
         res.status(200).json(category);
     } catch (error) {
@@ -102,6 +117,7 @@ export const deleteCategory = async (
 ): Promise<void> => {
     try {
         const { id } = req.params;
+        const categoryId = parseInt(id);
 
         // Check if category has ingredients
         const ingredientCount = await prisma.ingredient.count({
@@ -112,8 +128,37 @@ export const deleteCategory = async (
             throw new AppError('Cannot delete category with associated ingredients', 400);
         }
 
-        await prisma.ingredientCategory.delete({
-            where: { id: Number(id) }
+        await prisma.$transaction(async (tx) => {
+            // Check if category exists
+            const category = await tx.ingredientCategory.findUnique({
+                where: { id: categoryId }
+            });
+
+            if (!category) {
+                throw new AppError('Category not found', 404);
+            }
+
+            // Check if category has ingredients
+            const ingredientCount = await tx.ingredient.count({
+                where: { categoryId }
+            });
+
+            if (ingredientCount > 0) {
+                throw new AppError('Cannot delete category with associated ingredients', 400);
+            }
+
+            // Check if category has subcategories
+            const subcategoryCount = await tx.ingredientSubcategory.count({
+                where: { categoryId }
+            });
+
+            if (subcategoryCount > 0) {
+                throw new AppError('Cannot delete category with associated subcategories', 400);
+            }
+
+            await tx.ingredientCategory.delete({
+                where: { id: categoryId }
+            });
         });
 
         res.status(204).send();
@@ -172,16 +217,28 @@ export const createSubcategory = async (
 ): Promise<void> => {
     try {
         const { categoryId } = req.params;
+        const parsedCategoryId = Number(categoryId);
         const subcategoryData = req.body;
 
-        const subcategory = await prisma.ingredientSubcategory.create({
-            data: {
-                name: subcategoryData.name,
-                description: subcategoryData.description,
-                displayOrder: subcategoryData.displayOrder ?? 0,
-                categoryId: Number(categoryId)
-            },
-            include: { category: true }
+        const subcategory = await prisma.$transaction(async (tx) => {
+            // First check if category exists
+            const category = await tx.ingredientCategory.findUnique({
+                where: { id: parsedCategoryId }
+            });
+
+            if (!category) {
+                throw new AppError('Category not found', 404);
+            }
+
+            return tx.ingredientSubcategory.create({
+                data: {
+                    name: subcategoryData.name,
+                    description: subcategoryData.description,
+                    displayOrder: subcategoryData.displayOrder ?? 0,
+                    categoryId: parsedCategoryId
+                },
+                include: { category: true }
+            });
         });
 
         res.status(201).json(subcategory);
@@ -197,12 +254,24 @@ export const updateSubcategory = async (
 ): Promise<void> => {
     try {
         const { id } = req.params;
+        const subcategoryId = Number(id);
         const updateData = req.body;
 
-        const subcategory = await prisma.ingredientSubcategory.update({
-            where: { id: Number(id) },
-            data: updateData,
-            include: { category: true }
+        const subcategory = await prisma.$transaction(async (tx) => {
+            // First check if subcategory exists
+            const existingSubcategory = await tx.ingredientSubcategory.findUnique({
+                where: { id: subcategoryId }
+            });
+
+            if (!existingSubcategory) {
+                throw new AppError('Subcategory not found', 404);
+            }
+
+            return tx.ingredientSubcategory.update({
+                where: { id: subcategoryId },
+                data: updateData,
+                include: { category: true }
+            });
         });
 
         res.status(200).json(subcategory);
@@ -218,18 +287,30 @@ export const deleteSubcategory = async (
 ): Promise<void> => {
     try {
         const { id } = req.params;
+        const subcategoryId = Number(id);
 
-        // Check if subcategory has ingredients
-        const ingredientCount = await prisma.ingredient.count({
-            where: { subcategoryId: Number(id) }
-        });
+        await prisma.$transaction(async (tx) => {
+            // Check if subcategory exists
+            const subcategory = await tx.ingredientSubcategory.findUnique({
+                where: { id: subcategoryId }
+            });
 
-        if (ingredientCount > 0) {
-            throw new AppError('Cannot delete subcategory with associated ingredients', 400);
-        }
+            if (!subcategory) {
+                throw new AppError('Subcategory not found', 404);
+            }
 
-        await prisma.ingredientSubcategory.delete({
-            where: { id: Number(id) }
+            // Check if subcategory has ingredients
+            const ingredientCount = await tx.ingredient.count({
+                where: { subcategoryId }
+            });
+
+            if (ingredientCount > 0) {
+                throw new AppError('Cannot delete subcategory with associated ingredients', 400);
+            }
+
+            await tx.ingredientSubcategory.delete({
+                where: { id: subcategoryId }
+            });
         });
 
         res.status(204).send();

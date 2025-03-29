@@ -34,9 +34,10 @@ export const getUnitById = async (
 ): Promise<void> => {
     try {
         const { id } = req.params;
+        const unitId = Number(id);
 
         const unit = await prisma.unitOfMeasure.findUnique({
-            where: { id: Number(id) },
+            where: { id: unitId },
             include: {
                 baseUnit: true,
                 equivalentUnit: true
@@ -61,21 +62,46 @@ export const createUnit = async (
     try {
         const unitData = req.body;
 
-        const unit = await prisma.unitOfMeasure.create({
-            data: {
-                name: unitData.name,
-                abbreviation: unitData.abbreviation,
-                system: unitData.system,
-                type: unitData.type,
-                baseUnitId: unitData.baseUnitId,
-                conversionFactor: unitData.conversionFactor ?? 1.0,
-                equivalentUnitId: unitData.equivalentUnitId,
-                equivalentFactor: unitData.equivalentFactor
-            },
-            include: {
-                baseUnit: true,
-                equivalentUnit: true
+        // Use transaction for unit creation
+        const unit = await prisma.$transaction(async (tx) => {
+            // Check if base unit exists if specified
+            if (unitData.baseUnitId) {
+                const baseUnit = await tx.unitOfMeasure.findUnique({
+                    where: { id: unitData.baseUnitId }
+                });
+
+                if (!baseUnit) {
+                    throw new AppError('Base unit not found', 404);
+                }
             }
+
+            // Check if equivalent unit exists if specified
+            if (unitData.equivalentUnitId) {
+                const equivalentUnit = await tx.unitOfMeasure.findUnique({
+                    where: { id: unitData.equivalentUnitId }
+                });
+
+                if (!equivalentUnit) {
+                    throw new AppError('Equivalent unit not found', 404);
+                }
+            }
+
+            return tx.unitOfMeasure.create({
+                data: {
+                    name: unitData.name,
+                    abbreviation: unitData.abbreviation,
+                    system: unitData.system,
+                    type: unitData.type,
+                    baseUnitId: unitData.baseUnitId,
+                    conversionFactor: unitData.conversionFactor ?? 1.0,
+                    equivalentUnitId: unitData.equivalentUnitId,
+                    equivalentFactor: unitData.equivalentFactor
+                },
+                include: {
+                    baseUnit: true,
+                    equivalentUnit: true
+                }
+            });
         });
 
         res.status(201).json(unit);
@@ -91,15 +117,50 @@ export const updateUnit = async (
 ): Promise<void> => {
     try {
         const { id } = req.params;
+        const unitId = Number(id);
         const updateData = req.body;
 
-        const unit = await prisma.unitOfMeasure.update({
-            where: { id: Number(id) },
-            data: updateData,
-            include: {
-                baseUnit: true,
-                equivalentUnit: true
+        // Use transaction for unit update
+        const unit = await prisma.$transaction(async (tx) => {
+            // Check if unit exists
+            const existingUnit = await tx.unitOfMeasure.findUnique({
+                where: { id: unitId }
+            });
+
+            if (!existingUnit) {
+                throw new AppError('Unit not found', 404);
             }
+
+            // Check if base unit exists if specified
+            if (updateData.baseUnitId) {
+                const baseUnit = await tx.unitOfMeasure.findUnique({
+                    where: { id: updateData.baseUnitId }
+                });
+
+                if (!baseUnit) {
+                    throw new AppError('Base unit not found', 404);
+                }
+            }
+
+            // Check if equivalent unit exists if specified
+            if (updateData.equivalentUnitId) {
+                const equivalentUnit = await tx.unitOfMeasure.findUnique({
+                    where: { id: updateData.equivalentUnitId }
+                });
+
+                if (!equivalentUnit) {
+                    throw new AppError('Equivalent unit not found', 404);
+                }
+            }
+
+            return tx.unitOfMeasure.update({
+                where: { id: unitId },
+                data: updateData,
+                include: {
+                    baseUnit: true,
+                    equivalentUnit: true
+                }
+            });
         });
 
         res.status(200).json(unit);
@@ -115,32 +176,68 @@ export const deleteUnit = async (
 ): Promise<void> => {
     try {
         const { id } = req.params;
+        const unitId = Number(id);
 
-        // Check if unit is used by ingredients
-        const ingredientCount = await prisma.ingredient.count({
-            where: {
-                OR: [
-                    { defaultUnitId: Number(id) },
-                    { packageUnitId: Number(id) }
-                ]
+        // Use transaction for unit deletion with checks
+        await prisma.$transaction(async (tx) => {
+            // Check if unit exists
+            const unit = await tx.unitOfMeasure.findUnique({
+                where: { id: unitId }
+            });
+
+            if (!unit) {
+                throw new AppError('Unit not found', 404);
             }
-        });
 
-        if (ingredientCount > 0) {
-            throw new AppError('Cannot delete unit that is used by ingredients', 400);
-        }
+            // Check if unit is used by ingredients
+            const ingredientCount = await tx.ingredient.count({
+                where: {
+                    OR: [
+                        { defaultUnitId: unitId },
+                        { packageUnitId: unitId }
+                    ]
+                }
+            });
 
-        // Check if unit is used as a base unit for other units
-        const derivedUnitCount = await prisma.unitOfMeasure.count({
-            where: { baseUnitId: Number(id) }
-        });
+            if (ingredientCount > 0) {
+                throw new AppError('Cannot delete unit that is used by ingredients', 400);
+            }
 
-        if (derivedUnitCount > 0) {
-            throw new AppError('Cannot delete unit that is used as a base unit for other units', 400);
-        }
+            // Check if unit is used as a base unit for other units
+            const derivedUnitCount = await tx.unitOfMeasure.count({
+                where: { baseUnitId: unitId }
+            });
 
-        await prisma.unitOfMeasure.delete({
-            where: { id: Number(id) }
+            if (derivedUnitCount > 0) {
+                throw new AppError('Cannot delete unit that is used as a base unit for other units', 400);
+            }
+
+            // Check if unit is used in recipe ingredients
+            const recipeIngredientCount = await tx.recipeIngredient.count({
+                where: { unitId }
+            });
+
+            if (recipeIngredientCount > 0) {
+                throw new AppError('Cannot delete unit that is used in recipes', 400);
+            }
+
+            // Check if unit is used in density conversions
+            const densityConversionCount = await tx.ingredientDensity.count({
+                where: {
+                    OR: [
+                        { volumeUnitId: unitId },
+                        { weightUnitId: unitId }
+                    ]
+                }
+            });
+
+            if (densityConversionCount > 0) {
+                throw new AppError('Cannot delete unit that is used in density conversions', 400);
+            }
+
+            await tx.unitOfMeasure.delete({
+                where: { id: unitId }
+            });
         });
 
         res.status(204).send();
@@ -157,7 +254,7 @@ export const convertUnits = async (
     try {
         const { quantity, fromUnitId, toUnitId, ingredientId } = req.body;
 
-        // Get the units
+        // Get the units (no transaction needed for read-only operations)
         const fromUnit = await prisma.unitOfMeasure.findUnique({
             where: { id: fromUnitId },
             include: { baseUnit: true }
@@ -200,29 +297,31 @@ export const convertUnits = async (
                     throw new AppError('No density conversion found for this ingredient and units', 404);
                 }
 
-                let result;
+                const ingredientName = await getIngredientName(ingredientId);
+
                 if (fromUnit.type === 'VOLUME') {
                     // Volume to weight
-                    result = {
+                    const result = {
                         originalQuantity: quantity,
                         originalUnit: fromUnit.abbreviation,
                         convertedQuantity: quantity * densityConversion.conversionFactor,
                         convertedUnit: toUnit.abbreviation,
-                        conversionPath: `Converted using density factor: 1 ${fromUnit.abbreviation} = ${densityConversion.conversionFactor} ${toUnit.abbreviation} for ${await getIngredientName(ingredientId)}`
+                        conversionPath: `Converted using density factor: 1 ${fromUnit.abbreviation} = ${densityConversion.conversionFactor} ${toUnit.abbreviation} for ${ingredientName}`
                     };
+                    res.status(200).json(result);
+                    return;
                 } else {
                     // Weight to volume
-                    result = {
+                    const result = {
                         originalQuantity: quantity,
                         originalUnit: fromUnit.abbreviation,
                         convertedQuantity: quantity / densityConversion.conversionFactor,
                         convertedUnit: toUnit.abbreviation,
-                        conversionPath: `Converted using density factor: ${densityConversion.conversionFactor} ${toUnit.abbreviation} = 1 ${fromUnit.abbreviation} for ${await getIngredientName(ingredientId)}`
+                        conversionPath: `Converted using density factor: ${densityConversion.conversionFactor} ${toUnit.abbreviation} = 1 ${fromUnit.abbreviation} for ${ingredientName}`
                     };
+                    res.status(200).json(result);
+                    return;
                 }
-
-                res.status(200).json(result);
-                return;
             } else {
                 throw new AppError('Cannot convert between different unit types without density information', 400);
             }
@@ -266,7 +365,7 @@ export const convertUnits = async (
     }
 };
 
-// Helper function to get ingredient name
+// Helper function to get ingredient name (no transaction needed for read-only operation)
 async function getIngredientName(ingredientId: number): Promise<string> {
     const ingredient = await prisma.ingredient.findUnique({
         where: { id: ingredientId },
