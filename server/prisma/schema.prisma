@@ -35,7 +35,7 @@ enum UnitType {
 enum CourseType {
   MAIN_COURSE
   SIDE_DISH
-  APPETIZER 
+  APPETIZER
   DESSERT
   BEVERAGE
   BREAKFAST
@@ -59,6 +59,7 @@ enum MealType {
   DINNER
   BRUNCH
   LIGHT_SNACKS
+  REGISTRATION
 }
 
 enum EventType {
@@ -82,62 +83,60 @@ enum EventStatus {
   CANCELLED
 }
 
-
-// INGREDIENT CORE MODELS
+// INGREDIENT MODELS
 model Ingredient {
-  id                   Int              @id @default(autoincrement()) @map("ingredient_id")
-  name                 String           @unique
-  description          String?
-  categoryId           Int              @map("category_id")
-  category             IngredientCategory @relation(fields: [categoryId], references: [id])
-  subcategoryId        Int?             @map("subcategory_id")
-  subcategory          IngredientSubcategory? @relation(fields: [subcategoryId], references: [id])
-  defaultUnitId        Int              @map("default_unit_id")
-  defaultUnit          UnitOfMeasure    @relation("DefaultUnit", fields: [defaultUnitId], references: [id])
-  
+  id            Int                    @id @default(autoincrement()) @map("ingredient_id")
+  name          String                 @unique
+  description   String?
+  categoryId    Int                    @map("category_id")
+  category      IngredientCategory     @relation(fields: [categoryId], references: [id])
+  subcategoryId Int?                   @map("subcategory_id")
+  subcategory   IngredientSubcategory? @relation(fields: [subcategoryId], references: [id])
+  defaultUnitId Int                    @map("default_unit_id")
+  defaultUnit   UnitOfMeasure          @relation("DefaultUnit", fields: [defaultUnitId], references: [id])
+
   // Storage and shelf life
-  isPerishable         Boolean          @default(false) @map("is_perishable")
-  storageType          StorageType      @default(ROOM_TEMPERATURE) @map("storage_type")
-  shelfLifeDays        Int?             @map("shelf_life_days") // Shelf life in days
-  storageInstructions  String?          @map("storage_instructions")
-  
+  isPerishable        Boolean     @default(false) @map("is_perishable")
+  storageType         StorageType @default(ROOM_TEMPERATURE) @map("storage_type")
+  shelfLifeDays       Int?        @map("shelf_life_days") // Shelf life in days
+  storageInstructions String?     @map("storage_instructions")
+
   // Supplier information
-  supplierInstructions String?          @map("supplier_instructions") // Instructions for ordering from suppliers
-  supplierNotes        String?          @map("supplier_notes") // Notes about suppliers, pricing, etc.
-  preferredSupplier    String?          @map("preferred_supplier")
-  orderLeadTimeDays    Int?             @map("order_lead_time_days") // Lead time for ordering in days
-  
+  supplierInstructions String? @map("supplier_instructions") // Instructions for ordering from suppliers
+  supplierNotes        String? @map("supplier_notes") // Notes about suppliers, pricing, etc.
+  preferredSupplier    String? @map("preferred_supplier")
+  orderLeadTimeDays    Int?    @map("order_lead_time_days") // Lead time for ordering in days
+
   // Practical attributes
-  costPerUnitDollars   Float?           @map("cost_per_unit_dollars") // Cost per unit in dollars
-  packageSize          Float?           @map("package_size") // Size of standard package
-  packageUnitId        Int?             @map("package_unit_id")
-  packageUnit          UnitOfMeasure?   @relation("PackageUnit", fields: [packageUnitId], references: [id])
-  
+  costPerUnitDollars Float?         @map("cost_per_unit_dollars") // Cost per unit in dollars
+  packageSize        Float?         @map("package_size") // Size of standard package
+  packageUnitId      Int?           @map("package_unit_id")
+  packageUnit        UnitOfMeasure? @relation("PackageUnit", fields: [packageUnitId], references: [id])
+
   // Additional boolean attributes
-  isLocal              Boolean          @default(false) @map("is_local")
-  isOrganic            Boolean          @default(false) @map("is_organic")
-  isSeasonalItem       Boolean          @default(false) @map("is_seasonal_item")
-  hasVariablePrice     Boolean          @default(false) @map("has_variable_price")
-  isCommonAllergen     Boolean          @default(false) @map("is_common_allergen")
-  isSpecialOrder       Boolean          @default(false) @map("is_special_order")
-  
+  isLocal          Boolean @default(false) @map("is_local")
+  isOrganic        Boolean @default(false) @map("is_organic")
+  isSeasonalItem   Boolean @default(false) @map("is_seasonal_item")
+  hasVariablePrice Boolean @default(false) @map("has_variable_price")
+  isCommonAllergen Boolean @default(false) @map("is_common_allergen")
+  isSpecialOrder   Boolean @default(false) @map("is_special_order")
+
   // Relationships
-  allergens            IngredientAllergen[]
-  dietaryFlags         IngredientDietaryFlag[]
-  substitutes          IngredientSubstitute[]  @relation("OriginalIngredient")
-  substituteFor        IngredientSubstitute[]  @relation("SubstituteIngredient")
-  densityConversions   IngredientDensity[]
+  allergens           IngredientAllergen[]
+  dietaryFlags        IngredientDietaryFlag[]
+  substitutes         IngredientSubstitute[]  @relation("OriginalIngredient")
+  substituteFor       IngredientSubstitute[]  @relation("SubstituteIngredient")
+  densityConversions  IngredientDensity[]
   // Recipe relations
-  recipeIngredients    RecipeIngredient[]     // Relation to recipes that use this ingredient
-  alternateFor         RecipeIngredient[] @relation("AlternateIngredient") // Relation to recipes where this is an alternate
-  eventDayConsumables  EventDayConsumable[]   // << Where this ingredient is used as a daily consumable
-  
+  recipeIngredients   RecipeIngredient[] // Relation to recipes that use this ingredient
+  alternateFor        RecipeIngredient[]      @relation("AlternateIngredient") // Relation to recipes where this is an alternate
+  eventDayConsumables EventDayConsumable[] // << Where this ingredient is used as a daily consumable
+
   // Tracking
-  createdBy            String?          @map("created_by")
-  createdAt            DateTime         @default(now()) @map("created_at")
-  lastUpdatedBy        String?          @map("last_updated_by") 
-  updatedAt            DateTime         @updatedAt @map("updated_at")
-  
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  lastUpdatedBy String?  @map("last_updated_by")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@index([categoryId])
   @@index([subcategoryId])
@@ -147,132 +146,127 @@ model Ingredient {
 }
 
 model IngredientCategory {
-  id                   Int              @id @default(autoincrement()) @map("category_id")
-  name                 String           @unique
-  description          String?
-  storeSection         String?          @map("store_section")
-  displayOrder         Int              @default(0) @map("display_order")
-  
+  id           Int     @id @default(autoincrement()) @map("category_id")
+  name         String  @unique
+  description  String?
+  storeSection String? @map("store_section")
+  displayOrder Int     @default(0) @map("display_order")
+
   // Relationships
-  ingredients          Ingredient[]
-  subcategories        IngredientSubcategory[]
-  
+  ingredients   Ingredient[]
+  subcategories IngredientSubcategory[]
+
   // Tracking
-  createdAt            DateTime         @default(now()) @map("created_at")
-  updatedAt            DateTime         @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 }
 
 model IngredientSubcategory {
-  id                   Int              @id @default(autoincrement()) @map("subcategory_id")
-  name                 String
-  description          String?
-  categoryId           Int              @map("category_id")
-  category             IngredientCategory @relation(fields: [categoryId], references: [id])
-  displayOrder         Int              @default(0) @map("display_order")
-  
+  id           Int                @id @default(autoincrement()) @map("subcategory_id")
+  name         String
+  description  String?
+  categoryId   Int                @map("category_id")
+  category     IngredientCategory @relation(fields: [categoryId], references: [id])
+  displayOrder Int                @default(0) @map("display_order")
+
   // Relationships
-  ingredients          Ingredient[]
-  
+  ingredients Ingredient[]
+
   // Tracking
-  createdBy            String?          @map("created_by")
-  createdAt            DateTime         @default(now()) @map("created_at")
-  lastUpdatedBy        String?          @map("last_updated_by") 
-  updatedAt            DateTime         @updatedAt @map("updated_at")
-  
-  
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  lastUpdatedBy String?  @map("last_updated_by")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
   @@unique([name, categoryId])
   @@index([categoryId])
 }
 
 model IngredientAllergen {
-  id                   Int              @id @default(autoincrement()) @map("allergen_id")
-  ingredientId         Int              @map("ingredient_id")
-  ingredient           Ingredient       @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
-  allergenName         String           @map("allergen_name")
+  id           Int        @id @default(autoincrement()) @map("allergen_id")
+  ingredientId Int        @map("ingredient_id")
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  allergenName String     @map("allergen_name")
 
   // Tracking
-  createdBy            String?          @map("created_by")
-  createdAt            DateTime         @default(now()) @map("created_at")
-  lastUpdatedBy        String?          @map("last_updated_by") 
-  updatedAt            DateTime         @updatedAt @map("updated_at")
-  
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  lastUpdatedBy String?  @map("last_updated_by")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@unique([ingredientId, allergenName])
 }
 
 model IngredientDietaryFlag {
-  id                   Int              @id @default(autoincrement()) @map("dietary_flag_id")
-  ingredientId         Int              @map("ingredient_id")
-  ingredient           Ingredient       @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
-  flag                 String           // e.g., "Vegan", "Gluten-Free"
+  id           Int        @id @default(autoincrement()) @map("dietary_flag_id")
+  ingredientId Int        @map("ingredient_id")
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  flag         String // e.g., "Vegan", "Gluten-Free"
 
   // Tracking
-  createdBy            String?          @map("created_by")
-  createdAt            DateTime         @default(now()) @map("created_at")
-  lastUpdatedBy        String?          @map("last_updated_by") 
-  updatedAt            DateTime         @updatedAt @map("updated_at")
-  
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  lastUpdatedBy String?  @map("last_updated_by")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@unique([ingredientId, flag])
 }
 
 model IngredientSubstitute {
-  id                   Int              @id @default(autoincrement()) @map("substitute_id")
-  ingredientId         Int              @map("ingredient_id")
-  ingredient           Ingredient       @relation("OriginalIngredient", fields: [ingredientId], references: [id])
-  substituteIngredientId Int            @map("substitute_ingredient_id")
-  substituteIngredient Ingredient       @relation("SubstituteIngredient", fields: [substituteIngredientId], references: [id])
-  conversionRatio      Float            @default(1) @map("conversion_ratio")
-  notes                String?
+  id                     Int        @id @default(autoincrement()) @map("substitute_id")
+  ingredientId           Int        @map("ingredient_id")
+  ingredient             Ingredient @relation("OriginalIngredient", fields: [ingredientId], references: [id])
+  substituteIngredientId Int        @map("substitute_ingredient_id")
+  substituteIngredient   Ingredient @relation("SubstituteIngredient", fields: [substituteIngredientId], references: [id])
+  conversionRatio        Float      @default(1) @map("conversion_ratio")
+  notes                  String?
 
   // Tracking
-  createdBy            String?          @map("created_by")
-  createdAt            DateTime         @default(now()) @map("created_at")
-  lastUpdatedBy        String?          @map("last_updated_by") 
-  updatedAt            DateTime         @updatedAt @map("updated_at")
-  
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  lastUpdatedBy String?  @map("last_updated_by")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@unique([ingredientId, substituteIngredientId])
 }
 
 // UNIT MEASUREMENT SYSTEM
 model UnitOfMeasure {
-  id                   Int              @id @default(autoincrement()) @map("uom_id")
-  name                 String           @unique @map("uom_name")
-  abbreviation         String           @unique @map("uom_abbreviation")
-  system               MeasurementSystem @map("uom_system")
-  type                 UnitType         @map("uom_type")
-  
+  id           Int               @id @default(autoincrement()) @map("uom_id")
+  name         String            @unique @map("uom_name")
+  abbreviation String            @unique @map("uom_abbreviation")
+  system       MeasurementSystem @map("uom_system")
+  type         UnitType          @map("uom_type")
+
   // Base unit conversion (for same unit type)
-  baseUnitId           Int?             @map("uom_base_unit_id")
-  baseUnit             UnitOfMeasure?   @relation("UnitConversion", fields: [baseUnitId], references: [id])
-  derivedUnits         UnitOfMeasure[]  @relation("UnitConversion")
-  conversionFactor     Float            @default(1) @map("uom_conversion_factor")
-  
+  baseUnitId       Int?            @map("uom_base_unit_id")
+  baseUnit         UnitOfMeasure?  @relation("UnitConversion", fields: [baseUnitId], references: [id])
+  derivedUnits     UnitOfMeasure[] @relation("UnitConversion")
+  conversionFactor Float           @default(1) @map("uom_conversion_factor")
+
   // Cross-system counterpart (e.g., cups → milliliters)
-  equivalentUnitId     Int?             @map("uom_equivalent_id")
-  equivalentUnit       UnitOfMeasure?   @relation("SystemEquivalent", fields: [equivalentUnitId], references: [id])
-  reverseEquivalents   UnitOfMeasure[]  @relation("SystemEquivalent")
-  equivalentFactor     Float?           @map("uom_equivalent_factor")
-  
+  equivalentUnitId   Int?            @map("uom_equivalent_id")
+  equivalentUnit     UnitOfMeasure?  @relation("SystemEquivalent", fields: [equivalentUnitId], references: [id])
+  reverseEquivalents UnitOfMeasure[] @relation("SystemEquivalent")
+  equivalentFactor   Float?          @map("uom_equivalent_factor")
+
   // Relationships
-  defaultFor           Ingredient[]     @relation("DefaultUnit")
-  packageFor           Ingredient[]     @relation("PackageUnit")
-  
+  defaultFor Ingredient[] @relation("DefaultUnit")
+  packageFor Ingredient[] @relation("PackageUnit")
+  recipeIngredients   RecipeIngredient[]
+  eventDayConsumables EventDayConsumable[] // << Where this unit is used for daily consumables
+
+
   // Volume-weight conversions
-  volumeDensities      IngredientDensity[] @relation("VolumeUnit")
-  weightDensities      IngredientDensity[] @relation("WeightUnit")
-  
+  volumeDensities IngredientDensity[] @relation("VolumeUnit")
+  weightDensities IngredientDensity[] @relation("WeightUnit")
+
   // Tracking
-  createdBy            String?          @map("created_by")
-  createdAt            DateTime         @default(now()) @map("created_at")
-  lastUpdatedBy        String?          @map("last_updated_by") 
-  updatedAt            DateTime         @updatedAt @map("updated_at")
-  
-  // Recipe relationships
-  recipeIngredients    RecipeIngredient[]
-  eventDayConsumables  EventDayConsumable[] // << Where this unit is used for daily consumables
-  
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  lastUpdatedBy String?  @map("last_updated_by")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+ 
   @@index([system])
   @@index([type])
   @@index([baseUnitId])
@@ -280,64 +274,61 @@ model UnitOfMeasure {
 }
 
 model IngredientDensity {
-  id                   Int              @id @default(autoincrement()) @map("density_id")
-  ingredientId         Int              @map("ingredient_id")
-  ingredient           Ingredient       @relation(fields: [ingredientId], references: [id])
-  volumeUnitId         Int              @map("volume_unit_id")
-  volumeUnit           UnitOfMeasure    @relation("VolumeUnit", fields: [volumeUnitId], references: [id])
-  weightUnitId         Int              @map("weight_unit_id")
-  weightUnit           UnitOfMeasure    @relation("WeightUnit", fields: [weightUnitId], references: [id])
-  conversionFactor     Float            @map("conversion_factor") // e.g., 1 cup of flour = 120 grams
-  notes                String?
+  id               Int           @id @default(autoincrement()) @map("density_id")
+  ingredientId     Int           @map("ingredient_id")
+  ingredient       Ingredient    @relation(fields: [ingredientId], references: [id])
+  volumeUnitId     Int           @map("volume_unit_id")
+  volumeUnit       UnitOfMeasure @relation("VolumeUnit", fields: [volumeUnitId], references: [id])
+  weightUnitId     Int           @map("weight_unit_id")
+  weightUnit       UnitOfMeasure @relation("WeightUnit", fields: [weightUnitId], references: [id])
+  conversionFactor Float         @map("conversion_factor") // e.g., 1 cup of flour = 120 grams
+  notes            String?
 
   // Tracking
-  createdBy            String?          @map("created_by")
-  createdAt            DateTime         @default(now()) @map("created_at")
-  lastUpdatedBy        String?          @map("last_updated_by") 
-  updatedAt            DateTime         @updatedAt @map("updated_at")
-  
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  lastUpdatedBy String?  @map("last_updated_by")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@unique([ingredientId, volumeUnitId, weightUnitId])
 }
 
-
-
 // Recipe model
 model Recipe {
-  id                   Int              @id @default(autoincrement()) @map("recipe_id") 
-  name                 String           @unique
-  description          String?
-  servingSize          Int              @default(8) @map("serving_size")
-  preparationTimeMinutes Int?           @map("preparation_time_minutes")
-  cookingTimeMinutes   Int?             @map("cooking_time_minutes")
-  totalTimeMinutes     Int?             @map("total_time_minutes")
-  notes                String?
-  
+  id                     Int     @id @default(autoincrement()) @map("recipe_id")
+  name                   String  @unique
+  description            String?
+  servingSize            Int     @default(8) @map("serving_size")
+  preparationTimeMinutes Int?    @map("preparation_time_minutes")
+  cookingTimeMinutes     Int?    @map("cooking_time_minutes")
+  totalTimeMinutes       Int?    @map("total_time_minutes")
+  notes                  String?
+
   // Indian cooking specifics
-  cookingMethod        CookingMethod?   @map("cooking_method")
-  cookingEquipment     String?          @map("cooking_equipment") 
-  
+  cookingMethod    CookingMethod? @map("cooking_method")
+  cookingEquipment String?        @map("cooking_equipment")
+
   // Dietary info
-  hasOnionGarlic       Boolean          @default(false) @map("has_onion_garlic")
-  isGlutenFree         Boolean          @default(false) @map("is_gluten_free")
-  isVegan              Boolean          @default(false) @map("is_vegan")
-  
-  courseType           CourseType       @default(MAIN_COURSE) @map("course_type")
-  tags                 String?          // Comma-separated tags
-  submittedBy          String?          @map("submitted_by") // Name of the volunteer cook
-  
+  hasOnionGarlic Boolean @default(false) @map("has_onion_garlic")
+  isGlutenFree   Boolean @default(false) @map("is_gluten_free")
+  isVegan        Boolean @default(false) @map("is_vegan")
+
+  courseType  CourseType @default(MAIN_COURSE) @map("course_type")
+  tags        String? // Comma-separated tags
+  submittedBy String?    @map("submitted_by") // Name of the volunteer cook
+
   // Relationships
-  recipeIngredients    RecipeIngredient[]
-  steps                RecipeStep[]     // Relationship to steps
-  menuItems            MenuRecipe[]     // Which menu templates use this recipe
-  scheduledMeals       ScheduledMealRecipe[] // Which specific meals serve this recipe
-  
+  recipeIngredients RecipeIngredient[]
+  steps             RecipeStep[] // Relationship to steps
+  menuItems         MenuRecipe[] // Which menu templates use this recipe
+  scheduledMeals    ScheduledMealRecipe[] // Which specific meals serve this recipe
+
   // Tracking
-  createdAt            DateTime         @default(now()) @map("created_at")
-  updatedAt            DateTime         @updatedAt @map("updated_at")
-  createdBy            String?          @map("created_by")
-  lastUpdatedBy        String?          @map("last_updated_by")
-  
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdBy     String?  @map("created_by")
+  lastUpdatedBy String?  @map("last_updated_by")
+
   @@index([name])
   @@index([courseType])
   @@index([hasOnionGarlic])
@@ -347,49 +338,49 @@ model Recipe {
 
 // Recipe Step model
 model RecipeStep {
-  id                   Int              @id @default(autoincrement()) @map("recipe_step_id")
-  recipeId             Int              @map("recipe_id")
-  recipe               Recipe           @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  stepNumber           Int              @map("step_number") // For ordering
-  instruction          String           // The text for this step
-  estimatedTimeMinutes Int?             @map("estimated_time_minutes") // Optional timing info
-  isOptional           Boolean          @default(false) @map("is_optional")
-  
+  id                   Int     @id @default(autoincrement()) @map("recipe_step_id")
+  recipeId             Int     @map("recipe_id")
+  recipe               Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  stepNumber           Int     @map("step_number") // For ordering
+  instruction          String // The text for this step
+  estimatedTimeMinutes Int?    @map("estimated_time_minutes") // Optional timing info
+  isOptional           Boolean @default(false) @map("is_optional")
+
   // Tracking
-  createdAt            DateTime         @default(now()) @map("created_at")
-  updatedAt            DateTime         @updatedAt @map("updated_at")
-  createdBy            String?          @map("created_by")
-  lastUpdatedBy        String?          @map("last_updated_by")
-  
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdBy     String?  @map("created_by")
+  lastUpdatedBy String?  @map("last_updated_by")
+
   @@index([recipeId, stepNumber]) // For efficient ordering of steps
 }
 
 // Recipe Ingredient model
 model RecipeIngredient {
-  id                    Int                @id @default(autoincrement()) @map("recipe_ingredient_id")
-  recipeId              Int                @map("recipe_id")
-  recipe                Recipe             @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  ingredientId          Int                @map("ingredient_id")
-  ingredient            Ingredient         @relation(fields: [ingredientId], references: [id])
-  quantity              Float              // Amount of the ingredient
-  unitId                Int                @map("unit_id")
-  unit                  UnitOfMeasure      @relation(fields: [unitId], references: [id])
-  preparation           String?            // E.g., "chopped", "minced", etc.
-  isOptional            Boolean            @default(false) @map("is_optional")
-  displayOrder          Int                @default(0) @map("display_order") // For ingredient ordering in the recipe
-  notes                 String?            // Any special notes about this ingredient
-  
+  id           Int           @id @default(autoincrement()) @map("recipe_ingredient_id")
+  recipeId     Int           @map("recipe_id")
+  recipe       Recipe        @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredientId Int           @map("ingredient_id")
+  ingredient   Ingredient    @relation(fields: [ingredientId], references: [id])
+  quantity     Float // Amount of the ingredient
+  unitId       Int           @map("unit_id")
+  unit         UnitOfMeasure @relation(fields: [unitId], references: [id])
+  preparation  String? // E.g., "chopped", "minced", etc.
+  isOptional   Boolean       @default(false) @map("is_optional")
+  displayOrder Int           @default(0) @map("display_order") // For ingredient ordering in the recipe
+  notes        String? // Any special notes about this ingredient
+
   // Scaling behavior information
-  scalingFactor         Float              @default(1.0) @map("scaling_factor") // For ingredients that don't scale linearly
-  alternateIngredientId Int?               @map("alternate_ingredient_id") // For suggesting substitutes
-  alternateIngredient   Ingredient?        @relation("AlternateIngredient", fields: [alternateIngredientId], references: [id])
-  
+  scalingFactor         Float       @default(1.0) @map("scaling_factor") // For ingredients that don't scale linearly
+  alternateIngredientId Int?        @map("alternate_ingredient_id") // For suggesting substitutes
+  alternateIngredient   Ingredient? @relation("AlternateIngredient", fields: [alternateIngredientId], references: [id])
+
   // Tracking
-  createdAt             DateTime           @default(now()) @map("created_at")
-  updatedAt             DateTime           @updatedAt @map("updated_at")
-  createdBy             String?            @map("created_by")
-  lastUpdatedBy         String?            @map("last_updated_by")
-  
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdBy     String?  @map("created_by")
+  lastUpdatedBy String?  @map("last_updated_by")
+
   @@unique([recipeId, ingredientId, unitId, preparation])
   @@index([recipeId])
   @@index([ingredientId])
@@ -399,25 +390,25 @@ model RecipeIngredient {
 // --- Event & Planning Models ---
 
 model Event {
-  id                   Int           @id @default(autoincrement()) @map("event_id")
-  eventName            String        @unique
-  description          String?
-  eventType            EventType     @default(RETREAT)
-  eventStartDate       DateTime      @map("start_date")
-  eventEndDate         DateTime      @map("end_date")
-  location             String?
-  defaultAttendeeCount Int           @default(0) @map("default_attendee_count") // Reference count
-  defaultVolunteerCount Int          @default(0) @map("default_volunteer_count") // Reference count
-  status               EventStatus   @default(PLANNING)
+  id                    Int         @id @default(autoincrement()) @map("event_id")
+  eventName             String      @unique
+  description           String?
+  eventType             EventType   @default(RETREAT)
+  eventStartDate        DateTime    @map("start_date")
+  eventEndDate          DateTime    @map("end_date")
+  location              String?
+  defaultAttendeeCount  Int         @default(0) @map("default_attendee_count") // Reference count
+  defaultVolunteerCount Int         @default(0) @map("default_volunteer_count") // Reference count
+  status                EventStatus @default(PLANNING)
 
   // Relationships
-  days                 EventDay[]    // Event consists of multiple days
+  days EventDay[] // Event consists of multiple days
 
   // Tracking
-  createdAt            DateTime      @default(now()) @map("created_at")
-  updatedAt            DateTime      @updatedAt @map("updated_at")
-  createdBy            String?       @map("created_by")
-  lastUpdatedBy        String?       @map("last_updated_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdBy     String?  @map("created_by")
+  lastUpdatedBy String?  @map("last_updated_by")
 
   @@index([eventName])
   @@index([eventStartDate, eventEndDate])
@@ -426,23 +417,25 @@ model Event {
 }
 
 model EventDay {
-  id             Int           @id @default(autoincrement()) @map("event_day_id")
-  eventId        Int           @map("event_id")
-  event          Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  date           DateTime      @map("date") @db.Date
-  dayNumber      Int           @map("day_number")
-  phase          EventPhase    @default(MAIN_RETREAT)
-  notes          String?
+  id        Int        @id @default(autoincrement()) @map("event_day_id")
+  eventId   Int        @map("event_id")
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  date      DateTime   @map("date") @db.Date
+  dayNumber Int        @map("day_number")
+  phase     EventPhase @default(MAIN_RETREAT)
+  attendeeHeadcountForDay  Int  @default(0) @map("attendee_headcount_for_day") // Headcount for consumables on this day
+  volunteerHeadcountForDay Int  @default(0) @map("volunteer_headcount_for_day") // Headcount for consumables on this day
+  notes     String?
 
   // Relationships
-  scheduledMeals ScheduledMeal[]     // Meals scheduled for this day
+  scheduledMeals ScheduledMeal[] // Meals scheduled for this day
   consumables    EventDayConsumable[] // Consumables needed for this specific day
 
   // Tracking
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
-  createdBy      String?       @map("created_by")
-  lastUpdatedBy  String?       @map("last_updated_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdBy     String?  @map("created_by")
+  lastUpdatedBy String?  @map("last_updated_by")
 
   @@unique([eventId, dayNumber])
   @@unique([eventId, date])
@@ -451,46 +444,43 @@ model EventDay {
   @@index([phase])
 }
 
-model Menu { // Reusable template
-  id          Int      @id @default(autoincrement()) @map("menu_id")
-  name        String   @unique
+model Menu {
+  id          Int       @id @default(autoincrement()) @map("menu_id")
+  name        String    @unique
   description String?
   mealType    MealType? @map("meal_type")
 
-  scheduledMeals ScheduledMeal[]  // << The specific meals using this menu template
-
-  // ** MODIFIED: Renamed back to MenuRecipe **
-  menuItems   MenuRecipe[] // Link to recipes in this menu template
+  scheduledMeals ScheduledMeal[] // << The specific meals using this menu template
+  menuItems MenuRecipe[] // Link to recipes in this menu template
 
   // Tracking
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  createdBy   String?  @map("created_by")
-  lastUpdatedBy String? @map("last_updated_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdBy     String?  @map("created_by")
+  lastUpdatedBy String?  @map("last_updated_by")
 
   @@index([name])
   @@index([mealType])
 }
 
-// ** MODIFIED: Renamed back from MenuItem **
-model MenuRecipe { // Joins Menu template and Recipe
-  id           Int      @id @default(autoincrement()) @map("menu_recipe_id") // Updated map name
-  menuId       Int      @map("menu_id")
-  menu         Menu     @relation(fields: [menuId], references: [id], onDelete: Cascade)
-  recipeId     Int      @map("recipe_id")
-  recipe       Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  displayOrder Int      @default(0) @map("display_order")
+model MenuRecipe {
+  id           Int    @id @default(autoincrement()) @map("menu_recipe_id") // Updated map name
+  menuId       Int    @map("menu_id")
+  menu         Menu   @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  recipeId     Int    @map("recipe_id")
+  recipe       Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  displayOrder Int    @default(0) @map("display_order")
 
   // Tracking
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([menuId, recipeId])
   @@index([menuId])
   @@index([recipeId])
 }
 
-model ScheduledMeal { // Specific meal instance
+model ScheduledMeal {
   id                 Int      @id @default(autoincrement()) @map("scheduled_meal_id")
   dayId              Int      @map("day_id")
   day                EventDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
@@ -504,25 +494,25 @@ model ScheduledMeal { // Specific meal instance
   // Direct link to recipes for THIS meal instance
   scheduledMealRecipes ScheduledMealRecipe[]
 
-  notes              String?
+  notes String?
 
   // Tracking
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
-  createdBy          String?  @map("created_by")
-  lastUpdatedBy      String?  @map("last_updated_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdBy     String?  @map("created_by")
+  lastUpdatedBy String?  @map("last_updated_by")
 
   @@index([dayId])
   @@index([menuId])
   @@index([mealType])
 }
 
-model ScheduledMealRecipe { // Joins ScheduledMeal instance and Recipe
-  id              Int      @id @default(autoincrement()) @map("scheduled_meal_recipe_id")
-  scheduledMealId Int      @map("scheduled_meal_id")
+model ScheduledMealRecipe {
+  id              Int           @id @default(autoincrement()) @map("scheduled_meal_recipe_id")
+  scheduledMealId Int           @map("scheduled_meal_id")
   scheduledMeal   ScheduledMeal @relation(fields: [scheduledMealId], references: [id], onDelete: Cascade)
-  recipeId        Int      @map("recipe_id")
-  recipe          Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipeId        Int           @map("recipe_id")
+  recipe          Recipe        @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
   // Tracking
   createdAt DateTime @default(now()) @map("created_at")
@@ -533,24 +523,26 @@ model ScheduledMealRecipe { // Joins ScheduledMeal instance and Recipe
   @@index([recipeId])
 }
 
-// ** For tracking consumables PER DAY **
 model EventDayConsumable {
-  id                Int      @id @default(autoincrement()) @map("event_day_consumable_id")
-  dayId             Int      @map("day_id")
-  day               EventDay @relation(fields: [dayId], references: [id], onDelete: Cascade) // Delete if day deleted
-  ingredientId      Int      @map("ingredient_id")
-  ingredient        Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict) // Prevent deleting ingredient if used
-  estimatedQuantity Float    @map("estimated_quantity") // Amount needed for THIS DAY
-  unitId            Int      @map("unit_id")
+  id                Int           @id @default(autoincrement()) @map("event_day_consumable_id")
+  dayId             Int           @map("day_id")
+  day               EventDay      @relation(fields: [dayId], references: [id], onDelete: Cascade) // Delete if day deleted
+  ingredientId      Int           @map("ingredient_id")
+  ingredient        Ingredient    @relation(fields: [ingredientId], references: [id], onDelete: Restrict) // Prevent deleting ingredient if used
+  // Quantity intended for the baseServingSize below
+  baseServingQuantity Float         @map("base_serving_quantity")
+  // Base number of people the quantity is for (like recipes)
+  baseServingSize     Int           @default(8) @map("base_serving_size")
+  unitId            Int           @map("unit_id")
   unit              UnitOfMeasure @relation(fields: [unitId], references: [id], onDelete: Restrict) // Prevent deleting unit
-  notes             String?  // e.g., "For breaks", "Tea station"
-  purchaseTiming    String?  // Optional: "Pre-Event", "Day 1 Purchase", etc.
+  notes             String? // e.g., "For breaks", "Tea station"
+  purchaseTiming    String? // Optional: "Pre-Event", "Day 1 Purchase", etc.
 
   // Tracking
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  createdBy String?  @map("created_by")
-  lastUpdatedBy String? @map("last_updated_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdBy     String?  @map("created_by")
+  lastUpdatedBy String?  @map("last_updated_by")
 
   @@unique([dayId, ingredientId]) // Only one entry per ingredient per day
   @@index([dayId])

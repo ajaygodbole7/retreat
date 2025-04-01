@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
-import { AnyZodObject, ZodError } from 'zod';
+import { ZodError, ZodTypeAny } from 'zod';
 
 interface ValidateRequestOptions {
-    params?: AnyZodObject;
-    query?: AnyZodObject;
-    body?: AnyZodObject;
+    params?: ZodTypeAny;
+    query?: ZodTypeAny;
+    body?: ZodTypeAny;
 }
 
 export const validateRequest = (options: ValidateRequestOptions) => {

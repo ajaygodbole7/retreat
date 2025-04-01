@@ -1,0 +1,136 @@
+# 1a. CREATE Event
+curl -X POST "http://localhost:3001/api/events" \
+     -H "Content-Type: application/json" \
+     -d '{
+          "eventName": "Kriya Retreat Spring 2025",
+          "description": "Spring session focus.",
+          "eventType": "RETREAT",
+          "eventStartDate": "2025-04-10",
+          "eventEndDate": "2025-04-13",
+          "location": "Mountain View Center",
+          "defaultAttendeeCount": 50,
+          "defaultVolunteerCount": 12
+        }'
+
+# --- OBSERVE the output JSON, find the "id" of the created event (e.g., 2) ---
+
+# 1b. GET All Events
+curl -X GET "http://localhost:3001/api/events" | jq
+
+# 1c. GET Single Event (Use the ID from step 1a, e.g., 2)
+curl -X GET "http://localhost:3001/api/events/2" | jq
+
+# 1d. UPDATE Event (Use the ID from step 1a, e.g., 2)
+curl -X PUT "http://localhost:3001/api/events/2" \
+     -H "Content-Type: application/json" \
+     -d '{
+          "location": "Mountain View Center - Main Hall",
+          "status": "ACTIVE"
+        }'
+
+# 1e. DELETE Event (Use the ID from step 1a, e.g., 2 - CAREFUL!)
+# curl -X DELETE "http://localhost:3001/api/events/2"
+
+# 2a. ADD Day 1 to Event 2
+curl -X POST "http://localhost:3001/api/events/2/days" \
+     -H "Content-Type: application/json" \
+     -d '{
+          "date": "2025-04-10",
+          "dayNumber": 1,
+          "phase": "MAIN_RETREAT",
+          "notes": "Arrival & Opening"
+        }'
+
+# --- OBSERVE the output JSON, find the "id" of the created day (e.g., 3) ---
+
+# 2b. ADD Day 2 to Event 2
+curl -X POST "http://localhost:3001/api/events/2/days" \
+     -H "Content-Type: application/json" \
+     -d '{
+          "date": "2025-04-11",
+          "dayNumber": 2,
+          "phase": "MAIN_RETREAT"
+        }'
+
+# --- OBSERVE the output JSON, find the "id" of the created day (e.g., 4) ---
+
+# 2c. GET Event 2 Details (Should now include Days 1 and 2)
+curl -X GET "http://localhost:3001/api/events/2" | jq
+
+# 2d. UPDATE Event Day (Use the ID from step 2a, e.g., 3)
+curl -X PUT "http://localhost:3001/api/events/days/3" \
+     -H "Content-Type: application/json" \
+     -d '{
+          "notes": "Updated: Arrival, Opening & Orientation"
+        }'
+
+# 2e. DELETE Event Day (Use the ID from step 2a, e.g., 3 - CAREFUL!)
+# curl -X DELETE "http://localhost:3001/api/events/days/3"
+
+# 3a. ADD Lunch Meal to Day 4 (No Menu linked yet)
+curl -X POST "http://localhost:3001/api/events/days/4/meals" \
+     -H "Content-Type: application/json" \
+     -d '{
+          "time": "12:30:00",
+          "mealType": "LUNCH",
+          "attendeeHeadcount": 50,
+          "volunteerHeadcount": 12,
+          "notes": "Main Lunch"
+        }'
+
+# --- OBSERVE the output JSON, find the "id" of the created meal (e.g., 5) ---
+
+# 3b. ADD Dinner Meal to Day 4 (Linking Menu 1)
+curl -X POST "http://localhost:3001/api/events/days/4/meals" \
+     -H "Content-Type: application/json" \
+     -d '{
+          "time": "19:00:00",
+          "mealType": "DINNER",
+          "attendeeHeadcount": 48,
+          "volunteerHeadcount": 12,
+          "menuId": 1
+        }'
+
+# --- OBSERVE the output JSON, find the "id" of the created meal (e.g., 6) ---
+
+# 3c. GET Meals for Day 4
+curl -X GET "http://localhost:3001/api/events/days/4/meals" | jq
+
+# 3d. UPDATE Scheduled Meal (Use the ID from step 3a, e.g., 5) - Add Menu 1
+curl -X PUT "http://localhost:3001/api/scheduled-meals/5" \
+     -H "Content-Type: application/json" \
+     -d '{
+          "attendeeHeadcount": 52,
+          "menuId": 1,
+          "notes": "Updated headcount, Serving Standard Lunch"
+        }'
+
+# 3e. DELETE Scheduled Meal (Use the ID from step 3a, e.g., 5 - CAREFUL!)
+# curl -X DELETE "http://localhost:3001/api/scheduled-meals/5"
+
+# 4a. CREATE Menu
+curl -X POST "http://localhost:3001/api/menus" \
+     -H "Content-Type: application/json" \
+     -d '{
+          "name": "Simple Breakfast Template",
+          "description": "Poha, Upma, Fruit.",
+          "mealType": "BREAKFAST"
+        }'
+
+# --- OBSERVE the output JSON, find the "id" (e.g., 1) ---
+
+# 4b. GET All Menus
+curl -X GET "http://localhost:3001/api/menus" | jq
+
+# 4c. GET Single Menu (Use the ID from step 4a, e.g., 1)
+curl -X GET "http://localhost:3001/api/menus/1" | jq
+
+# 4d. UPDATE Menu (Use the ID from step 4a, e.g., 1)
+curl -X PUT "http://localhost:3001/api/menus/1" \
+     -H "Content-Type: application/json" \
+     -d '{
+          "description": "Updated: Poha, Upma, Fresh Fruit."
+        }'
+
+# 4e. DELETE Menu (Use the ID from step 4a, e.g., 1 - CAREFUL!)
+# curl -X DELETE "http://localhost:3001/api/menus/1"

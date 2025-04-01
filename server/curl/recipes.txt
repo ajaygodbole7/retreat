@@ -1,0 +1,45 @@
+curl -X POST http://localhost:3001/api/recipes/complete \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recipe": {
+      "name": "Ajay's Masoor Dal",
+      "description": "Traditional red lentil curry",
+      "servingSize": 8,
+      "preparationTimeMinutes": 15,
+      "cookingTimeMinutes": 30,
+      "totalTimeMinutes": 45,
+      "hasOnionGarlic": true,
+      "isGlutenFree": true,
+      "isVegan": true,
+      "courseType": "MAIN_COURSE",
+      "submittedBy": "Anita"
+    },
+    "ingredients": [
+      {
+        "ingredientId": 1,
+        "quantity": 2,
+        "unitId": 1,
+        "preparation": "rinsed",
+        "displayOrder": 1
+      },
+      {
+        "ingredientId": 3,
+        "quantity": 1,
+        "unitId": 2,
+        "preparation": "diced",
+        "displayOrder": 2
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "instruction": "Rinse lentils until water runs clear",
+        "estimatedTimeMinutes": 5
+      },
+      {
+        "stepNumber": 2,
+        "instruction": "Add lentils and water to pot, bring to boil",
+        "estimatedTimeMinutes": 10
+      }
+    ]
+  }'
