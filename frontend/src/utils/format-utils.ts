@@ -10,9 +10,9 @@ export function formatTime(minutes: number | null | undefined): string {
     const mins = minutes % 60
 
     if (hours > 0) {
-        return `${hours}h ${mins > 0 ? `${mins}m` : ""}`
+        return `${ hours }h ${ mins > 0 ? `${ mins }m` : "" }`
     }
-    return `${mins}m`
+    return `${ mins }m`
 }
 
 /**
@@ -107,4 +107,15 @@ export function formatCourseType(courseType: CourseType): string {
  */
 export function formatCookingMethod(method: CookingMethod | null | undefined): string {
     return getCookingMethodLabel(method)
+}
+
+// Helper function to format enum values for display
+export function formatEnum(value: string | null | undefined): string {
+    if (!value) return "N/A";
+    // Handle potential camelCase or PascalCase by inserting spaces before caps
+    const spacedValue = value.replace(/([A-Z])/g, '$1').trim();
+    return spacedValue
+        .replace(/_/g, " ") // Replace underscores with spaces
+        .toLowerCase() // Convert to lowercase
+        .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize first letter of each word
 }

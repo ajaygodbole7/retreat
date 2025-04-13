@@ -10,10 +10,21 @@ import { RecipeForm } from "./features/recipes/RecipeFormGemini"
 //import { RecipeForm } from "./features/recipes/RecipeForm"
 //import { IntegratedRecipeForm } from "./features/recipes/IntegratedRecipeForm"
 //import { CompleteRecipeForm } from "./features/recipes/CompleteRecipeForm"
+// Event Imports
+import { EventsPage } from "./features/events/EventsPage";
+import { EventForm } from "./features/events/EventForm";
+import { EventDetail } from "./features/events/EventDetail";
 import ComingSoon from "./pages/ComingSoon"
 import NotFound from "./pages/NotFound"
 import UnderConstruction from "./pages/UnderConstruction"
 import Dashboard from "./pages/DashboardNew"
+
+// --- Type Helper for Loader Context ---
+interface EditContext { mode: 'edit'; id: number }
+interface NewContext { mode: 'new' }
+
+// Define specific context types for clarity
+type EventFormRouteContext = EditContext | NewContext;
 
 // Create the root route
 export const rootRoute = createRootRoute({
@@ -79,6 +90,41 @@ const editRecipeRoute = createRoute({
     component: RecipeForm,
 })
 
+/// --- Event Routes (Loaders added here) ---
+const eventsIndexRoute = createRoute({ 
+    getParentRoute: () => rootRoute, 
+    path: "/events", component: EventsPage 
+});
+
+export const newEventRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/events/new", // Path string is the default ID
+    component: EventForm,
+    loader: (): NewEventContext => {
+        console.log("Loader executing for /events/new");
+        return { mode: 'new' };
+    },
+});
+
+// Event Detail Route (no loader needed for detail display page itself)
+const eventDetailRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/events/$eventId",
+    component: EventDetail,
+});
+// Edit Event Route with Loader
+export const editEventRoute = createRoute({ // *** Export ***
+    getParentRoute: () => rootRoute,
+    path: "/events/$eventId/edit", // Path string is the default ID
+    component: EventForm,
+    loader: ({ params }): EditContext => {
+        console.log("Loader executing for /events/$eventId/edit with params:", params);
+        const eventId = Number.parseInt(params.eventId, 10);
+        if (isNaN(eventId)) { throw new Error("Invalid Event ID"); }
+        return { mode: 'edit', id: eventId };
+    },
+});
+
 const comingSoonRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/coming-soon",
@@ -108,6 +154,11 @@ export const routeTree = rootRoute.addChildren([
     newRecipeRoute,
     recipeDetailRoute,
     editRecipeRoute,
+    // Events
+    eventsIndexRoute,
+    newEventRoute,
+    eventDetailRoute,
+    editEventRoute,
     comingSoonRoute,
     underConstructionRoute,
     notFoundRoute,
@@ -119,6 +170,12 @@ export const router = createRouter({ routeTree })
 // Register the router for type safety
 declare module "@tanstack/react-router" {
     interface Register {
-        router: typeof router
+        router: typeof router;
+        routeTree: typeof routeTree;
+        // Tell TypeScript the shape of loaderData for specific route paths
+        '/events/new': { LoaderData: NewContext; };
+        '/events/$eventId/edit': { LoaderData: EditContext; };
+        '/recipes/new': { LoaderData: NewContext; }; // Recipe contexts
+        '/recipes/$recipeId/edit': { LoaderData: EditContext; };
     }
 }
