@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { UtensilsCrossed } from 'lucide-react'
+import { UtensilsCrossed, Home, Package,CookingPot, Calendar } from 'lucide-react'
 import blossomLogo from '@/assets/blossom-logo.png'
 
 export function Navbar() {
@@ -24,27 +24,36 @@ export function Navbar() {
                             className="hover:underline underline-offset-4"
                             activeProps={{ className: 'font-bold' }}
                         >
-                            Home
+                            <Home className="h-4 w-4" /> Home
                         </Link>
                         <Link
                             to="/ingredients"
                             className="hover:underline underline-offset-4"
                             activeProps={{ className: 'font-bold' }}
                         >
-                            Ingredients
+                           <Package className="h-4 w-4" />  Ingredients
                         </Link>
                         <Link
                             to="/recipes"
                             className="hover:underline underline-offset-4"
                             activeProps={{ className: 'font-bold' }}
                         >
-                            Recipes
+                           <CookingPot className="h-4 w-4" /> Recipes
                         </Link>
                         <Link
-                            to="/meal-plans"
-                            className="hover:underline underline-offset-4"
-                            activeProps={{ className: 'font-bold' }}
+                            to="/events"
+                            className="flex items-center gap-1 hover:underline underline-offset-4 [&.active]:font-bold [&.active]:underline"
+                            activeProps={{ className: 'font-bold underline' }}
                         >
+                            <Calendar className="h-4 w-4" /> Events
+                        </Link>
+                        <Link
+                            to="/meal-plans" // Link to the placeholder route
+                            className="flex items-center gap-1 hover:underline underline-offset-4 [&.active]:font-bold [&.active]:underline"
+                            activeProps={{ className: 'font-bold underline' }}
+                        >
+                            {/* Consider a different icon for Meal Plans */}
+                            <Calendar className="h-4 w-4" />
                             Meal Plans
                         </Link>
                     </nav>

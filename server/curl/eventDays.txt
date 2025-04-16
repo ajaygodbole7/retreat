@@ -1,0 +1,37 @@
+(Assumes an Event with ID 2 exists from the previous step)
+
+# 2a. ADD Day 1 to Event 2
+curl -X POST "http://localhost:3001/api/events/2/days" \
+     -H "Content-Type: application/json" \
+     -d '{
+          "date": "2025-04-10",
+          "dayNumber": 1,
+          "phase": "MAIN_RETREAT",
+          "notes": "Arrival & Opening"
+        }'
+
+# --- OBSERVE the output JSON, find the "id" of the created day (e.g., 3) ---
+
+# 2b. ADD Day 2 to Event 2
+curl -X POST "http://localhost:3001/api/events/2/days" \
+     -H "Content-Type: application/json" \
+     -d '{
+          "date": "2025-04-11",
+          "dayNumber": 2,
+          "phase": "MAIN_RETREAT"
+        }'
+
+# --- OBSERVE the output JSON, find the "id" of the created day (e.g., 4) ---
+
+# 2c. GET Event 2 Details (Should now include Days 1 and 2)
+curl -X GET "http://localhost:3001/api/events/2" | jq
+
+# 2d. UPDATE Event Day (Use the ID from step 2a, e.g., 3)
+curl -X PUT "http://localhost:3001/api/events/days/3" \
+     -H "Content-Type: application/json" \
+     -d '{
+          "notes": "Updated: Arrival, Opening & Orientation"
+        }'
+
+# 2e. DELETE Event Day (Use the ID from step 2a, e.g., 3 - CAREFUL!)
+# curl -X DELETE "http://localhost:3001/api/events/days/3"

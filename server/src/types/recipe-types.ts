@@ -1,3 +1,9 @@
+// Import types from ingredient-types.ts
+import {
+    Ingredient,
+    UnitOfMeasure
+} from './ingredient-types';
+
 // TypeScript interfaces matching the Recipe-related Prisma schema
 
 export enum CourseType {
@@ -74,10 +80,10 @@ export interface RecipeIngredient {
     recipeId: number;
     recipe?: Recipe;
     ingredientId: number;
-    ingredient?: any; // Would be Ingredient type from ingredient-types
+    ingredient?: Ingredient; // Using imported Ingredient type
     quantity: number;
     unitId: number;
-    unit?: any; // Would be UnitOfMeasure type from ingredient-types
+    unit?: UnitOfMeasure; // Using imported UnitOfMeasure type
     preparation?: string | null;
     isOptional: boolean;
     displayOrder: number;
@@ -86,7 +92,7 @@ export interface RecipeIngredient {
     // Scaling behavior information
     scalingFactor: number;
     alternateIngredientId?: number | null;
-    alternateIngredient?: any; // Would be Ingredient type
+    alternateIngredient?: Ingredient; // Using imported Ingredient type
 
     // Tracking
     createdAt: Date;
@@ -115,6 +121,9 @@ export interface CreateRecipeInput {
     tags?: string | null;
     submittedBy?: string | null;
     createdBy?: string | null;
+    createdAt?: Date;
+    lastUpdatedBy?: string | null;
+    updatedAt?: Date;
 }
 
 /**
@@ -137,6 +146,7 @@ export interface UpdateRecipeInput {
     tags?: string | null;
     submittedBy?: string | null;
     lastUpdatedBy?: string | null;
+    updatedAt?: Date;
 }
 
 /**
@@ -149,6 +159,9 @@ export interface CreateRecipeStepInput {
     estimatedTimeMinutes?: number | null;
     isOptional?: boolean;
     createdBy?: string | null;
+    createdAt?: Date;
+    lastUpdatedBy?: string | null;
+    updatedAt?: Date;
 }
 
 /**
@@ -160,6 +173,7 @@ export interface UpdateRecipeStepInput {
     estimatedTimeMinutes?: number | null;
     isOptional?: boolean;
     lastUpdatedBy?: string | null;
+    updatedAt?: Date;
 }
 
 /**
@@ -177,6 +191,9 @@ export interface CreateRecipeIngredientInput {
     scalingFactor?: number;
     alternateIngredientId?: number | null;
     createdBy?: string | null;
+    createdAt?: Date;
+    lastUpdatedBy?: string | null;
+    updatedAt?: Date;
 }
 
 /**
@@ -192,6 +209,7 @@ export interface UpdateRecipeIngredientInput {
     scalingFactor?: number;
     alternateIngredientId?: number | null;
     lastUpdatedBy?: string | null;
+    updatedAt?: Date;
 }
 
 /**
@@ -204,4 +222,5 @@ export interface RecipeFilters {
     hasOnionGarlic?: string;
     search?: string; // For searching by name or description
     submittedBy?: string;
+    createdBy?: string; // Added filter for createdBy
 }

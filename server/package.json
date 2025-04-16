@@ -18,13 +18,16 @@
     "seed:dairy": "ts-node prisma/seed/seed-dairy-ingredients.ts",
     "seed:frozenveg": "ts-node prisma/seed/seed-frozenveg-ingredients.ts",
     "seed:ready": "ts-node prisma/seed/seed-ready-ingredients.ts",
-    "seed:fruit": "ts-node prisma/seed/seed-fruit-ingredients.ts"
+    "seed:fruit": "ts-node prisma/seed/seed-fruit-ingredients.ts",
+    "seed:recipes": "ts-node prisma/seed/seed-recipes.ts",
+    "test:events-api": "ts-node scripts/test-event-api.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@prisma/client": "^6.5.0",
+    "axios": "^1.8.4",
     "bcrypt": "^5.1.1",
     "compression": "^1.8.0",
     "connect-pg-simple": "^10.0.0",
@@ -46,7 +49,9 @@
     "@types/express": "^5.0.0",
     "@types/express-session": "^1.18.1",
     "@types/morgan": "^1.9.9",
-    "@types/node": "^22.13.10",
+    "@types/node": "^22.13.14",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.1",
     "nodemon": "^3.1.9",
     "prisma": "^6.5.0",
     "ts-node": "^10.9.2",

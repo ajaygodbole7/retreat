@@ -11,6 +11,9 @@ import { ingredientRoutes } from './routes/ingredientRoutes';
 import { categoryRoutes } from './routes/categoryRoutes';
 import { unitRoutes } from './routes/unitRoutes';
 import { recipeRoutes } from './routes/recipeRoutes';
+import { eventRoutes } from './routes/eventRoutes';
+import { menuRoutes } from './routes/menuRoutes';
+import { scheduledMealRoutes } from './routes/scheduledMealRoutes';
 
 // Initialize express app
 const app = express();
@@ -62,6 +65,10 @@ app.use('/api/ingredients', ingredientRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/units', unitRoutes);
 app.use('/api/recipes', recipeRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/menus', menuRoutes);
+app.use('/api/scheduled-meals', scheduledMealRoutes);
+
 // Health check endpoint
 app.get('/health', (_req, res) => {
     res.status(200).json({ status: 'ok' });
