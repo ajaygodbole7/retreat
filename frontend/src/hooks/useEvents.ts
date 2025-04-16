@@ -12,12 +12,20 @@ import type {
     CreateEventDayInput,
     UpdateEventDayInput,
     EventDayConsumableInput,
-    UpdateEventDayConsumableInput
+    UpdateEventDayConsumableInput,
+    ScheduledMeal
 } from '@server/types/event-types';
 
 // Define the detailed type using imported backend types
-type EventWithDetails = Event & { days?: (EventDay & { consumables?: EventDayConsumable[] })[] };
-
+// Define the detailed type using imported backend types
+// Ensure EventDay includes consumables here if fetched within the main Event query
+type EventWithDetails = Event & {
+    days?: (EventDay & {
+        consumables?: EventDayConsumable[] // Include day consumables
+        // Include scheduledMeals relation if needed by components using useEvent directly
+        scheduledMeals?: ScheduledMeal[]
+    })[]
+};
 /** Hook for fetching a list of all events */
 export function useEventList(options?: Partial<UseQueryOptions<Event[]>>) {
     return useQuery<Event[]>({
@@ -223,7 +231,7 @@ export function useAddEventDayConsumable(eventId: number) {
             const result = await eventApi.addConsumable(dayId, data);
             return parseStringsToDates(result);
         },
-        onSuccess: (_, variables) => { // Added variables here
+        onSuccess: () => { // Added variables here
             // Invalidate the main event query to reflect the added consumable
             queryClient.invalidateQueries({ queryKey: ["event", eventId] });
             toast({ title: "Success", description: "Consumable added." });

@@ -20,9 +20,12 @@ import type {
     UpdateEventDayInput,
     EventDayConsumableInput,
     UpdateEventDayConsumableInput,
+    Menu,
+    MenuRecipe,
     CreateScheduledMealInput,
     UpdateScheduledMealInput,
-    ScheduledMeal
+    ScheduledMeal,
+    ScheduledMealRecipe
 } from '@server/types/event-types';
 
 // Create axios instance with base URL and default headers
