@@ -14,6 +14,8 @@ import { recipeRoutes } from './routes/recipeRoutes';
 import { eventRoutes } from './routes/eventRoutes';
 import { menuRoutes } from './routes/menuRoutes';
 import { scheduledMealRoutes } from './routes/scheduledMealRoutes';
+import { shoppingListRoutes } from './routes/shoppingListRoutes';
+
 
 // Initialize express app
 const app = express();
@@ -68,7 +70,7 @@ app.use('/api/recipes', recipeRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/menus', menuRoutes);
 app.use('/api/scheduled-meals', scheduledMealRoutes);
-
+app.use('/api', shoppingListRoutes);
 // Health check endpoint
 app.get('/health', (_req, res) => {
     res.status(200).json({ status: 'ok' });
@@ -79,5 +81,5 @@ app.use(errorHandler as unknown as ErrorRequestHandler);
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on port ${ PORT }`);
 });

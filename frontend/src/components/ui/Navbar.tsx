@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { UtensilsCrossed, Home, Package,CookingPot, Calendar } from 'lucide-react'
+import { UtensilsCrossed, Home, Package, CookingPot, Calendar } from 'lucide-react'
 import blossomLogo from '@/assets/blossom-logo.png'
 
 export function Navbar() {
@@ -31,14 +31,14 @@ export function Navbar() {
                             className="hover:underline underline-offset-4"
                             activeProps={{ className: 'font-bold' }}
                         >
-                           <Package className="h-4 w-4" />  Ingredients
+                            <Package className="h-4 w-4" />  Ingredients
                         </Link>
                         <Link
                             to="/recipes"
                             className="hover:underline underline-offset-4"
                             activeProps={{ className: 'font-bold' }}
                         >
-                           <CookingPot className="h-4 w-4" /> Recipes
+                            <CookingPot className="h-4 w-4" /> Recipes
                         </Link>
                         <Link
                             to="/events"
@@ -46,15 +46,6 @@ export function Navbar() {
                             activeProps={{ className: 'font-bold underline' }}
                         >
                             <Calendar className="h-4 w-4" /> Events
-                        </Link>
-                        <Link
-                            to="/meal-plans" // Link to the placeholder route
-                            className="flex items-center gap-1 hover:underline underline-offset-4 [&.active]:font-bold [&.active]:underline"
-                            activeProps={{ className: 'font-bold underline' }}
-                        >
-                            {/* Consider a different icon for Meal Plans */}
-                            <Calendar className="h-4 w-4" />
-                            Meal Plans
                         </Link>
                     </nav>
                 </div>

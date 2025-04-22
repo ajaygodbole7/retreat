@@ -1,0 +1,390 @@
+// src/utils/unitConversionUtils.ts
+
+import { AppError } from '../middleware/errorHandler';
+import { HttpStatus } from '../constants/httpStatus';
+
+// Define unit types for categorization
+export enum UnitType {
+    VOLUME = 'VOLUME',
+    WEIGHT = 'WEIGHT',
+    COUNT = 'COUNT',
+    LENGTH = 'LENGTH',
+    TEMPERATURE = 'TEMPERATURE',
+    OTHER = 'OTHER'
+}
+
+// Define conversion factors relative to base units
+// Base units: grams for weight, milliliters for volume
+interface UnitConversionFactor {
+    type: UnitType;
+    toBase: number; // Multiply by this to convert to base unit
+    fromBase: number; // Multiply by this to convert from base unit
+}
+
+// Map of unit abbreviations/names to their conversion factors
+const conversionFactors: Record<string, UnitConversionFactor> = {
+    // Volume units (base: milliliters)
+    'ml': { type: UnitType.VOLUME, toBase: 1, fromBase: 1 },
+    'milliliter': { type: UnitType.VOLUME, toBase: 1, fromBase: 1 },
+    'milliliters': { type: UnitType.VOLUME, toBase: 1, fromBase: 1 },
+    'l': { type: UnitType.VOLUME, toBase: 1000, fromBase: 0.001 },
+    'liter': { type: UnitType.VOLUME, toBase: 1000, fromBase: 0.001 },
+    'liters': { type: UnitType.VOLUME, toBase: 1000, fromBase: 0.001 },
+    'tsp': { type: UnitType.VOLUME, toBase: 4.93, fromBase: 0.203 },
+    'teaspoon': { type: UnitType.VOLUME, toBase: 4.93, fromBase: 0.203 },
+    'teaspoons': { type: UnitType.VOLUME, toBase: 4.93, fromBase: 0.203 },
+    'tbsp': { type: UnitType.VOLUME, toBase: 14.79, fromBase: 0.068 },
+    'tablespoon': { type: UnitType.VOLUME, toBase: 14.79, fromBase: 0.068 },
+    'tablespoons': { type: UnitType.VOLUME, toBase: 14.79, fromBase: 0.068 },
+    'fl oz': { type: UnitType.VOLUME, toBase: 29.57, fromBase: 0.034 },
+    'fluid ounce': { type: UnitType.VOLUME, toBase: 29.57, fromBase: 0.034 },
+    'fluid ounces': { type: UnitType.VOLUME, toBase: 29.57, fromBase: 0.034 },
+    'cup': { type: UnitType.VOLUME, toBase: 236.59, fromBase: 0.00423 },
+    'cups': { type: UnitType.VOLUME, toBase: 236.59, fromBase: 0.00423 },
+    'pint': { type: UnitType.VOLUME, toBase: 473.18, fromBase: 0.00211 },
+    'pints': { type: UnitType.VOLUME, toBase: 473.18, fromBase: 0.00211 },
+    'quart': { type: UnitType.VOLUME, toBase: 946.35, fromBase: 0.00106 },
+    'quarts': { type: UnitType.VOLUME, toBase: 946.35, fromBase: 0.00106 },
+    'gallon': { type: UnitType.VOLUME, toBase: 3785.41, fromBase: 0.000264 },
+    'gallons': { type: UnitType.VOLUME, toBase: 3785.41, fromBase: 0.000264 },
+
+    // Weight units (base: grams)
+    'g': { type: UnitType.WEIGHT, toBase: 1, fromBase: 1 },
+    'gram': { type: UnitType.WEIGHT, toBase: 1, fromBase: 1 },
+    'grams': { type: UnitType.WEIGHT, toBase: 1, fromBase: 1 },
+    'kg': { type: UnitType.WEIGHT, toBase: 1000, fromBase: 0.001 },
+    'kilogram': { type: UnitType.WEIGHT, toBase: 1000, fromBase: 0.001 },
+    'kilograms': { type: UnitType.WEIGHT, toBase: 1000, fromBase: 0.001 },
+    'mg': { type: UnitType.WEIGHT, toBase: 0.001, fromBase: 1000 },
+    'milligram': { type: UnitType.WEIGHT, toBase: 0.001, fromBase: 1000 },
+    'milligrams': { type: UnitType.WEIGHT, toBase: 0.001, fromBase: 1000 },
+    'oz': { type: UnitType.WEIGHT, toBase: 28.35, fromBase: 0.035 },
+    'ounce': { type: UnitType.WEIGHT, toBase: 28.35, fromBase: 0.035 },
+    'ounces': { type: UnitType.WEIGHT, toBase: 28.35, fromBase: 0.035 },
+    'lb': { type: UnitType.WEIGHT, toBase: 453.59, fromBase: 0.0022 },
+    'pound': { type: UnitType.WEIGHT, toBase: 453.59, fromBase: 0.0022 },
+    'pounds': { type: UnitType.WEIGHT, toBase: 453.59, fromBase: 0.0022 },
+
+    // Count units (not convertible between each other)
+    'each': { type: UnitType.COUNT, toBase: 1, fromBase: 1 },
+    'ea': { type: UnitType.COUNT, toBase: 1, fromBase: 1 },
+    'piece': { type: UnitType.COUNT, toBase: 1, fromBase: 1 },
+    'pieces': { type: UnitType.COUNT, toBase: 1, fromBase: 1 },
+    'slice': { type: UnitType.COUNT, toBase: 1, fromBase: 1 },
+    'slices': { type: UnitType.COUNT, toBase: 1, fromBase: 1 },
+    'bunch': { type: UnitType.COUNT, toBase: 1, fromBase: 1 },
+    'bunches': { type: UnitType.COUNT, toBase: 1, fromBase: 1 },
+    'package': { type: UnitType.COUNT, toBase: 1, fromBase: 1 },
+    'packages': { type: UnitType.COUNT, toBase: 1, fromBase: 1 },
+    'can': { type: UnitType.COUNT, toBase: 1, fromBase: 1 },
+    'cans': { type: UnitType.COUNT, toBase: 1, fromBase: 1 },
+    'bottle': { type: UnitType.COUNT, toBase: 1, fromBase: 1 },
+    'bottles': { type: UnitType.COUNT, toBase: 1, fromBase: 1 },
+
+    // Length units (base: millimeters)
+    'mm': { type: UnitType.LENGTH, toBase: 1, fromBase: 1 },
+    'millimeter': { type: UnitType.LENGTH, toBase: 1, fromBase: 1 },
+    'millimeters': { type: UnitType.LENGTH, toBase: 1, fromBase: 1 },
+    'cm': { type: UnitType.LENGTH, toBase: 10, fromBase: 0.1 },
+    'centimeter': { type: UnitType.LENGTH, toBase: 10, fromBase: 0.1 },
+    'centimeters': { type: UnitType.LENGTH, toBase: 10, fromBase: 0.1 },
+    'in': { type: UnitType.LENGTH, toBase: 25.4, fromBase: 0.0394 },
+    'inch': { type: UnitType.LENGTH, toBase: 25.4, fromBase: 0.0394 },
+    'inches': { type: UnitType.LENGTH, toBase: 25.4, fromBase: 0.0394 },
+
+    // Temperature units (not typically used in shopping lists, but included for completeness)
+    '°C': { type: UnitType.TEMPERATURE, toBase: 1, fromBase: 1 },
+    'celsius': { type: UnitType.TEMPERATURE, toBase: 1, fromBase: 1 },
+    '°F': { type: UnitType.TEMPERATURE, toBase: 1, fromBase: 1 }, // Special conversion handled separately
+    'fahrenheit': { type: UnitType.TEMPERATURE, toBase: 1, fromBase: 1 }, // Special conversion handled separately
+
+    // Other/custom units
+    'pinch': { type: UnitType.OTHER, toBase: 1, fromBase: 1 },
+    'dash': { type: UnitType.OTHER, toBase: 1, fromBase: 1 },
+    'to taste': { type: UnitType.OTHER, toBase: 1, fromBase: 1 },
+};
+
+// Ingredient-specific density factors (g/ml) for volume-to-weight conversions
+// These are approximate and can vary based on many factors
+const ingredientDensities: Record<string, number> = {
+    'water': 1.0,
+    'milk': 1.03,
+    'cream': 1.0,
+    'olive oil': 0.92,
+    'vegetable oil': 0.92,
+    'honey': 1.42,
+    'maple syrup': 1.32,
+    'sugar': 0.85, // Granulated sugar
+    'brown sugar': 0.82,
+    'powdered sugar': 0.56,
+    'salt': 1.2,
+    'flour': 0.53, // All-purpose flour
+    'rice': 0.75, // Uncooked white rice
+    'butter': 0.96,
+};
+
+// Default density for ingredients not in the list
+const DEFAULT_DENSITY = 1.0; // g/ml
+
+/**
+ * Gets the unit type for a given unit
+ * @param unit Unit name or abbreviation
+ * @returns Unit type or null if not found
+ */
+export function getUnitType(unit: string): UnitType | null {
+    const normalizedUnit = unit.toLowerCase().trim();
+    const factor = conversionFactors[normalizedUnit];
+    return factor ? factor.type : null;
+}
+
+/**
+ * Checks if two units are compatible for conversion
+ * @param fromUnit Source unit
+ * @param toUnit Target unit
+ * @returns True if units are compatible
+ */
+export function areUnitsCompatible(fromUnit: string, toUnit: string): boolean {
+    const fromType = getUnitType(fromUnit);
+    const toType = getUnitType(toUnit);
+
+    // Both units must be recognized and of the same type
+    if (!fromType || !toType) return false;
+
+    // Special case: COUNT units are only compatible with themselves
+    if (fromType === UnitType.COUNT || toType === UnitType.COUNT) {
+        return fromUnit.toLowerCase() === toUnit.toLowerCase();
+    }
+
+    return fromType === toType;
+}
+
+/**
+ * Gets the density of an ingredient for volume-to-weight conversions
+ * @param ingredientName Name of the ingredient
+ * @returns Density in g/ml
+ */
+export function getIngredientDensity(ingredientName: string): number {
+    if (!ingredientName) return DEFAULT_DENSITY;
+
+    const normalizedName = ingredientName.toLowerCase().trim();
+
+    // Try exact match first
+    if (ingredientDensities[normalizedName]) {
+        return ingredientDensities[normalizedName];
+    }
+
+    // Try partial match
+    for (const [key, density] of Object.entries(ingredientDensities)) {
+        if (normalizedName.includes(key) || key.includes(normalizedName)) {
+            return density;
+        }
+    }
+
+    return DEFAULT_DENSITY;
+}
+
+/**
+ * Converts a quantity from one unit to another
+ * @param quantity Quantity to convert
+ * @param fromUnit Source unit
+ * @param toUnit Target unit
+ * @param ingredientName Optional ingredient name for volume-to-weight conversions
+ * @returns Converted quantity
+ * @throws Error if units are incompatible or not recognized
+ */
+export function convertUnits(
+    quantity: number,
+    fromUnit: string,
+    toUnit: string,
+    ingredientName?: string
+): number {
+    // Normalize unit names
+    const normalizedFromUnit = fromUnit.toLowerCase().trim();
+    const normalizedToUnit = toUnit.toLowerCase().trim();
+
+    // If units are the same, no conversion needed
+    if (normalizedFromUnit === normalizedToUnit) {
+        return quantity;
+    }
+
+    // Get conversion factors
+    const fromFactor = conversionFactors[normalizedFromUnit];
+    const toFactor = conversionFactors[normalizedToUnit];
+
+    // Check if units are recognized
+    if (!fromFactor) {
+        throw new AppError(`Unknown unit: ${ fromUnit }`, HttpStatus.BAD_REQUEST);
+    }
+    if (!toFactor) {
+        throw new AppError(`Unknown unit: ${ toUnit }`, HttpStatus.BAD_REQUEST);
+    }
+
+    // Check if units are compatible
+    if (fromFactor.type !== toFactor.type) {
+        // Special case: volume to weight conversion
+        if (
+            (fromFactor.type === UnitType.VOLUME && toFactor.type === UnitType.WEIGHT) ||
+            (fromFactor.type === UnitType.WEIGHT && toFactor.type === UnitType.VOLUME)
+        ) {
+            if (!ingredientName) {
+                throw new AppError(
+                    `Cannot convert between ${ fromUnit } and ${ toUnit } without ingredient name`,
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
+            const density = getIngredientDensity(ingredientName);
+
+            if (fromFactor.type === UnitType.VOLUME && toFactor.type === UnitType.WEIGHT) {
+                // Volume to weight: multiply by density
+                const volumeInMl = quantity * fromFactor.toBase;
+                const weightInG = volumeInMl * density;
+                return weightInG * toFactor.fromBase;
+            } else {
+                // Weight to volume: divide by density
+                const weightInG = quantity * fromFactor.toBase;
+                const volumeInMl = weightInG / density;
+                return volumeInMl * toFactor.fromBase;
+            }
+        }
+
+        // Special case: temperature conversion
+        if (fromFactor.type === UnitType.TEMPERATURE && toFactor.type === UnitType.TEMPERATURE) {
+            if (normalizedFromUnit.includes('f') && normalizedToUnit.includes('c')) {
+                // Fahrenheit to Celsius
+                return (quantity - 32) * (5 / 9);
+            } else if (normalizedFromUnit.includes('c') && normalizedToUnit.includes('f')) {
+                // Celsius to Fahrenheit
+                return (quantity * (9 / 5)) + 32;
+            }
+        }
+
+        throw new AppError(
+            `Cannot convert between incompatible units: ${ fromUnit } and ${ toUnit }`,
+            HttpStatus.BAD_REQUEST
+        );
+    }
+
+    // Special case: COUNT units are only compatible with themselves
+    if (fromFactor.type === UnitType.COUNT && normalizedFromUnit !== normalizedToUnit) {
+        throw new AppError(
+            `Cannot convert between different count units: ${ fromUnit } and ${ toUnit }`,
+            HttpStatus.BAD_REQUEST
+        );
+    }
+
+    // Standard conversion: convert to base unit, then to target unit
+    const baseValue = quantity * fromFactor.toBase;
+    return baseValue * toFactor.fromBase;
+}
+
+/**
+ * Rounds a converted quantity to a reasonable precision based on the magnitude
+ * @param quantity Quantity to round
+ * @returns Rounded quantity
+ */
+export function roundConvertedQuantity(quantity: number): number {
+    if (quantity === 0) return 0;
+
+    const absQuantity = Math.abs(quantity);
+
+    // For very small quantities, keep 4 significant digits
+    if (absQuantity < 0.001) {
+        return Number(quantity.toPrecision(4));
+    }
+
+    // For small quantities, keep 3 decimal places
+    if (absQuantity < 1) {
+        return Number(quantity.toFixed(3));
+    }
+
+    // For medium quantities, keep 2 decimal places
+    if (absQuantity < 10) {
+        return Number(quantity.toFixed(2));
+    }
+
+    // For large quantities, keep 1 decimal place
+    if (absQuantity < 100) {
+        return Number(quantity.toFixed(1));
+    }
+
+    // For very large quantities, round to nearest integer
+    return Math.round(quantity);
+}
+
+/**
+ * Converts a quantity with appropriate rounding
+ * @param quantity Quantity to convert
+ * @param fromUnit Source unit
+ * @param toUnit Target unit
+ * @param ingredientName Optional ingredient name for volume-to-weight conversions
+ * @returns Converted and rounded quantity
+ */
+export function convertAndRoundUnits(
+    quantity: number,
+    fromUnit: string,
+    toUnit: string,
+    ingredientName?: string
+): number {
+    const converted = convertUnits(quantity, fromUnit, toUnit, ingredientName);
+    return roundConvertedQuantity(converted);
+}
+
+/**
+ * Gets a list of compatible units for a given unit
+ * @param unit Unit to find compatible units for
+ * @returns Array of compatible unit names
+ */
+export function getCompatibleUnits(unit: string): string[] {
+    const normalizedUnit = unit.toLowerCase().trim();
+    const unitType = getUnitType(normalizedUnit);
+
+    if (!unitType) return [];
+
+    // For COUNT units, only return the exact unit
+    if (unitType === UnitType.COUNT) {
+        return [unit];
+    }
+
+    // Return all units of the same type
+    return Object.entries(conversionFactors)
+        .filter(([_, factor]) => factor.type === unitType)
+        .map(([unitName, _]) => unitName);
+}
+
+/**
+ * Suggests the best unit for a given quantity and current unit
+ * @param quantity Current quantity
+ * @param currentUnit Current unit
+ * @returns Suggested unit for better readability
+ */
+export function suggestBetterUnit(quantity: number, currentUnit: string): string {
+    const normalizedUnit = currentUnit.toLowerCase().trim();
+    const unitType = getUnitType(normalizedUnit);
+
+    if (!unitType || unitType === UnitType.COUNT || unitType === UnitType.OTHER) {
+        return currentUnit; // No suggestion for count or unknown units
+    }
+
+    // Get all compatible units
+    const compatibleUnits = getCompatibleUnits(normalizedUnit);
+
+    // Convert quantity to all compatible units
+    const conversions = compatibleUnits.map(unit => ({
+        unit,
+        value: convertUnits(quantity, normalizedUnit, unit)
+    }));
+
+    // Find the unit where the value is between 1 and 1000
+    const idealConversions = conversions.filter(c => c.value >= 1 && c.value < 1000);
+
+    if (idealConversions.length === 0) {
+        return currentUnit; // No better suggestion
+    }
+
+    // Find the unit with the smallest value that's still >= 1
+    return idealConversions.reduce((best, current) => {
+        if (current.value < best.value) return current;
+        return best;
+    }, idealConversions[0]).unit;
+}

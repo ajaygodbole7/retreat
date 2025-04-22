@@ -131,6 +131,7 @@ model Ingredient {
   recipeIngredients   RecipeIngredient[] // Relation to recipes that use this ingredient
   alternateFor        RecipeIngredient[]      @relation("AlternateIngredient") // Relation to recipes where this is an alternate
   eventDayConsumables EventDayConsumable[] // << Where this ingredient is used as a daily consumable
+  shoppingListItems ShoppingListItem[]
 
   // Tracking
   createdBy     String?  @map("created_by")
@@ -255,6 +256,7 @@ model UnitOfMeasure {
   packageFor Ingredient[] @relation("PackageUnit")
   recipeIngredients   RecipeIngredient[]
   eventDayConsumables EventDayConsumable[] // << Where this unit is used for daily consumables
+  shoppingListItems ShoppingListItem[]
 
 
   // Volume-weight conversions
@@ -403,6 +405,7 @@ model Event {
 
   // Relationships
   days EventDay[] // Event consists of multiple days
+  shoppingList ShoppingList? //Optional mapping to a ShoppingList
 
   // Tracking
   createdAt     DateTime @default(now()) @map("created_at")
@@ -548,4 +551,80 @@ model EventDayConsumable {
   @@index([dayId])
   @@index([ingredientId])
   @@index([unitId])
+}
+
+//  SHOPPING LISTS
+
+enum ShoppingListStatus {
+  DRAFT
+  GENERATED 
+  PURCHASING 
+  COMPLETED
+  ARCHIVED 
+}
+
+enum ShoppingListItemStatus {
+  NEEDED
+  PURCHASED
+  PARTIAL 
+  OUT_OF_STOCK
+  SUBSTITUTED
+  NOT_NEEDED 
+}
+
+model ShoppingList {
+  id           Int      @id @default(autoincrement()) @map("shopping_list_id")
+  eventId      Int      @unique @map("event_id")
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  status       ShoppingListStatus   @default(DRAFT)
+  generatedAt  DateTime? @map("generated_at") @db.Timestamptz(3) 
+  notes        String?
+
+  items ShoppingListItem[]
+
+  // Use Timestamptz for tracking fields
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3) 
+  lastUpdatedBy String?  @map("last_updated_by")
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3) 
+
+  @@index([eventId])
+  @@map("shopping_list")
+}
+
+model ShoppingListItem {
+  id                 Int           @id @default(autoincrement()) @map("shopping_list_item_id")
+  shoppingListId     Int           @map("shopping_list_id")
+  shoppingList       ShoppingList  @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+
+  ingredientId       Int           @map("ingredient_id")
+  ingredient         Ingredient    @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  unitId             Int           @map("unit_id")
+  unit               UnitOfMeasure @relation(fields: [unitId], references: [id], onDelete: Restrict)
+
+  ingredientName     String        @map("ingredient_name")
+  unitAbbreviation   String        @map("unit_abbreviation")
+  categoryId         Int?          @map("category_id")
+  categoryName       String?       @map("category_name")
+
+  calculatedQuantity Float         @map("calculated_quantity")
+  purchasedQuantity  Float?        @map("purchased_quantity")
+  status             ShoppingListItemStatus @default(NEEDED) 
+  notes              String?
+  orderedFrom        String?
+  orderPickupDate   DateTime?      @db.Date
+
+
+  //tracking fields
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3) 
+  lastUpdatedBy String?  @map("last_updated_by")
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3) 
+
+  @@unique([shoppingListId, ingredientId, unitId])
+  @@index([shoppingListId])
+  @@index([ingredientId])
+  @@index([unitId])
+  @@index([categoryId])
+  @@map("shopping_list_item")
 }

@@ -1,6 +1,7 @@
 import express from 'express';
 import * as eventController from '../controllers/eventController';
-import * as scheduledMealController from '../controllers/scheduledMealController'; // Import meal controller
+import * as scheduledMealController from '../controllers/scheduledMealController';
+import * as shoppingListController from '../controllers/shoppingListController';
 import { validateRequest } from '../middleware/validateRequest';
 import { createEventSchema, updateEventSchema, createEventDaySchema, updateEventDaySchema, eventDayConsumableSchema, updateEventDayConsumableSchema } from '../schemas/eventSchemas';
 import { createScheduledMealSchema } from '../schemas/scheduledMealSchemas'; // Import meal schema
@@ -29,7 +30,16 @@ router.delete('/consumables/:consumableId', eventController.deleteEventDayConsum
 // --- ScheduledMeal Routes (Nested under EventDay) ---
 router.get('/days/:dayId/meals', scheduledMealController.getMealsForEventDay);
 router.post('/days/:dayId/meals', validateRequest({ body: createScheduledMealSchema }), scheduledMealController.createMealForEventDay);
-// Individual meal updates/deletes use the separate scheduledMealRoutes below
 
+// Event-Specific Shopping List
+router.get(
+    '/:eventId/shopping-list',
+    shoppingListController.getEventShoppingList
+);
+
+router.put(
+    '/:eventId/shopping-list',
+    shoppingListController.generateAndStoreEventList
+);
 
 export { router as eventRoutes };

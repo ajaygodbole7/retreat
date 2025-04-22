@@ -8,7 +8,7 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
-import { Loader2, Plus, Trash2, PackageIcon } from "lucide-react";
+import { Loader2, Plus, Trash2, AppleIcon, PopcornIcon } from "lucide-react";
 import {
     useAddEventDayConsumable,
     useDeleteEventDayConsumable,
@@ -94,13 +94,17 @@ export function DayConsumablesSection({ eventId, dayId, consumables, onUpdate }:
             // TODO: Add user feedback (toast)
             return;
         }
-        addConsumableMutation.mutate({
-            ingredientId: selectedIngredientId,
-            baseServingQuantity: quantity,
-            baseServingSize: baseServingSize,
-            unitId: selectedUnitId,
-            notes
-        }, {
+        addConsumableMutation.mutate(
+            {
+                dayId,
+                data: {
+                    ingredientId: selectedIngredientId,
+                    baseServingQuantity: quantity,
+                    baseServingSize: baseServingSize,
+                    unitId: selectedUnitId,
+                    notes,
+                },
+            }, {
             onSuccess: () => {
                 setSelectedIngredientId(null);
                 setQuantity(1);
@@ -127,9 +131,9 @@ export function DayConsumablesSection({ eventId, dayId, consumables, onUpdate }:
         <Card className="mt-4">
             <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                    <PackageIcon className="h-4 w-4" /> Day-Level Consumables
+                    <AppleIcon className="h-4 w-4" /> Day-Level Ready To Eat
                 </CardTitle>
-                <CardDescription className="text-xs">Items needed generally for the day (e.g., napkins, tea, ready-to-eat snacks).</CardDescription>
+                <CardDescription className="text-xs">Items needed for the day (fruits, snacks).</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 pt-3">
                 {/* List existing day consumables */}
@@ -155,7 +159,7 @@ export function DayConsumablesSection({ eventId, dayId, consumables, onUpdate }:
 
                 {/* Add New Day Consumable Form */}
                 <div className="border-t pt-3">
-                    <h4 className="text-xs font-medium mb-2">Add Day Consumable</h4>
+                    <h4 className="text-xs font-medium mb-2">Add Ready To Eat Item</h4>
                     <div className="grid grid-cols-2 gap-2 items-end">
                         {/* Ingredient (Filtered Dropdown) */}
                         <div className="col-span-2 space-y-1">

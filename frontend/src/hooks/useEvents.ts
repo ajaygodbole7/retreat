@@ -220,15 +220,22 @@ export function useDeleteEventDay(eventId: number) {
 }
 
 
-// --- Event Day Consumable Hooks --- (No changes needed here unless they also used setTimeout)
+// --- Event Day Consumable Hooks --- 
 
 /** Hook for adding a consumable */
-export function useAddEventDayConsumable(eventId: number) {
+export function useAddEventDayConsumable(eventId: number, dayId?: number) {
     const queryClient = useQueryClient();
     const { toast } = useToast();
-    return useMutation<EventDayConsumable, Error, { dayId: number; data: EventDayConsumableInput }>({
-        mutationFn: async ({ dayId, data }) => {
-            const result = await eventApi.addConsumable(dayId, data);
+    return useMutation<EventDayConsumable, Error, { dayId?: number; data: EventDayConsumableInput }>({
+        mutationFn: async ({ dayId: paramDayId, data }) => {
+            // Use the dayId from the parameter if provided, otherwise use the one from the hook
+            const effectiveDayId = paramDayId || dayId
+
+            if (!effectiveDayId) {
+                throw new Error("Day ID is required to add a consumable")
+            }
+
+            const result = await eventApi.addConsumable(effectiveDayId, data);
             return parseStringsToDates(result);
         },
         onSuccess: () => { // Added variables here

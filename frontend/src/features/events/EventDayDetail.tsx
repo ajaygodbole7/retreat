@@ -104,7 +104,7 @@ export function EventDayDetail({ eventId, day, onUpdate, existingDayNumbers }: E
 
     return (
         <> {/* Fragment */}
-            <Card className="flex flex-col h-full border shadow-sm">
+            <Card className="flex flex-col h-full border shadow-sm mb-6">
                 {/* === CARD HEADER REFINED === */}
                 <CardHeader className="py-2.5 px-3 border-b bg-slate-50/70"> {/* Adjusted padding */}
                     <div className="flex justify-between items-center gap-3"> {/* Increased gap */}

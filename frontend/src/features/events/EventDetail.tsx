@@ -26,26 +26,32 @@ import type {
 import type { Recipe } from "@server/types/recipe-types";
 import type { Ingredient } from "@server/types/ingredient-types";
 import type { UnitOfMeasure } from "@server/types/ingredient-types";
+// Import shopping list components
+import { ShoppingListTab } from "../shopping-lists/ShoppingListTab";
+
+
 
 
 // REMOVED: EventOverviewTab Component Definition
 
 // --- ShoppingListTab Component (Placeholder) ---
 // Kept as is, no changes requested here
-function ShoppingListTab() {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Shopping List</CardTitle>
-                {/* Removed CardDescription based on feedback */}
-                {/* <CardDescription>Consolidated shopping list for the event</CardDescription> */}
-            </CardHeader>
-            <CardContent>
-                <p className="text-muted-foreground">Shopping list generation feature coming soon.</p>
-            </CardContent>
-        </Card>
-    );
-}
+
+//function ShoppingListTab({ eventId }: { eventId: number }) {
+//    return (
+//<Card>
+//  <CardHeader>
+//<CardTitle>Shopping List</CardTitle>
+
+//</CardHeader>
+// <CardContent>
+//    {/*<p className="text-muted-foreground">Shopping list generation feature coming soon.</p>*/}
+//   <ShoppingList eventId={eventId} />
+// </CardContent>
+//</Card>
+//);
+//}
+
 
 // --- Define the detailed type expected from useEvent ---
 // (Keep this type definition as it reflects backend structure)
@@ -192,7 +198,7 @@ export function EventDetail(props: EventDetailProps) {
 
                 {/* Tab Content: Shopping List */}
                 <TabsContent value="shopping" className="mt-0"> {/* Removed margin top */}
-                    <ShoppingListTab />
+                    <ShoppingListTab eventId={eventId} />
                 </TabsContent>
             </Tabs>
 

@@ -28,6 +28,14 @@ import type {
     ScheduledMealRecipe
 } from '@server/types/event-types';
 
+import type {
+    ShoppingListItemData,
+    ShoppingListData,
+    ShoppingListWithItems,    
+    AggregatedShoppingItem,
+    GroupedShoppingList
+} from "@server/types/shopping-list-types"
+
 // Create axios instance with base URL and default headers
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001/api',
@@ -402,6 +410,60 @@ export const scheduledMealApi = {
             throw error
         }
     },
+};
+
+// --- Shopping List API ---
+export const shoppingListApi = {
+    // Get a stored shopping list for an event
+    getEventShoppingList: async (eventId: number): Promise<ShoppingListWithItems | null> => {
+        try {
+            console.log(`API: Fetching shopping list for event ${ eventId }`);
+            const response = await api.get(`/events/${ eventId }/shopping-list`);
+            return response.data;
+        } catch (error) {
+            // Handle 404 (no list yet) differently than other errors
+            if (axios.isAxiosError(error) && error.response?.status === 404) {
+                console.log(`No shopping list found for event ${ eventId }`);
+                return null;
+            }
+            console.error(`API Error fetching shopping list for event ${ eventId }:`, error);
+            throw error;
+        }
+    },
+
+    // Generate or replace a shopping list for an event
+    generateEventShoppingList: async (eventId: number): Promise<ShoppingListWithItems> => {
+        console.log(`API: Generating shopping list for event ${ eventId }`);
+        const response = await api.put(`/events/${ eventId }/shopping-list`);
+        return response.data;
+    },
+
+    // Update a shopping list item
+    updateShoppingListItem: async (itemId: number, data: Partial<ShoppingListItemData>): Promise<ShoppingListItemData> => {
+        console.log(`API: Updating shopping list item ${ itemId } with data:`, data);
+        const response = await api.put(`/shopping-lists/items/${ itemId }`, data);
+        return response.data;
+    },
+
+    // Update shopping list details
+    updateShoppingList: async (listId: number, data: Partial<ShoppingListData>): Promise<ShoppingListData> => {
+        console.log(`API: Updating shopping list ${ listId } with data:`, data);
+        const response = await api.put(`/shopping-lists/${ listId }`, data);
+        return response.data;
+    },
+
+    // Get consolidated shopping list
+    getConsolidatedShoppingList: async (params: {
+        startDate?: string;
+        endDate?: string;
+        eventIds?: number[];
+        eventTypes?: string[];
+        roundQuantities?: boolean;
+    }): Promise<GroupedShoppingList> => {
+        console.log(`API: Fetching consolidated shopping list with params:`, params);
+        const response = await api.get(`/shopping-lists/consolidated`, { params });
+        return response.data;
+    }
 };
 
 export default api;
