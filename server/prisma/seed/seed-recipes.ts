@@ -6,7 +6,7 @@ import { parse } from 'csv-parse/sync';
 const prisma = new PrismaClient();
 
 // --- Configuration ---
-const CSV_FILE_NAME = '../../data/bg1-recipes.csv';
+const CSV_FILE_NAME = '../../data/bg2-3-pranam-recipes.csv';
 const DEFAULT_CATEGORY_NAME = 'Uncategorized';
 
 // --- Helper Types ---
@@ -45,14 +45,14 @@ async function upsertRecipeInTransaction(
     ingredientsMap: Map<string, Ingredient>,
     defaultUnit: UnitOfMeasure
 ): Promise<UpsertResult> {
-    console.log(`   -> Preparing DB data for "${recipeData.name}"...`);
+    console.log(`   -> Preparing DB data for "${ recipeData.name }"...`);
 
     try {
         // --- Prepare Nested Data ---
         const ingredientsToCreate = recipeData.ingredients.map((ingData, index) => {
             const ingredient = ingredientsMap.get(ingData.name.toLowerCase());
             if (!ingredient) {
-                throw new Error(`❌ Internal Error: Pre-lookup failed for ingredient ${ingData.name} in recipe "${recipeData.name}"`);
+                throw new Error(`❌ Internal Error: Pre-lookup failed for ingredient ${ ingData.name } in recipe "${ recipeData.name }"`);
             }
 
             // Handle "to taste" ingredients or those without units
@@ -69,7 +69,7 @@ async function upsertRecipeInTransaction(
             // Normal ingredients with quantity and unit
             const unit = unitsMap.get(ingData.unitAbbr.toLowerCase());
             if (!unit) {
-                console.log(`   -> Using default unit for "${ingData.name}" (unit "${ingData.unitAbbr}" not found)`);
+                console.log(`   -> Using default unit for "${ ingData.name }" (unit "${ ingData.unitAbbr }" not found)`);
                 return {
                     ingredientId: ingredient.id,
                     quantity: ingData.quantity,
@@ -115,33 +115,33 @@ async function upsertRecipeInTransaction(
         });
 
         const wasCreated = upserted.createdAt.toISOString() === upserted.updatedAt.toISOString();
-        console.log(`     -> ${wasCreated ? '✅ Created' : '☑️ Updated'} Recipe ID: ${upserted.id}`);
+        console.log(`     -> ${ wasCreated ? '✅ Created' : '☑️ Updated' } Recipe ID: ${ upserted.id }`);
 
         return { skipped: false, created: wasCreated, error: false };
     } catch (error) {
-        console.error(`   -> ❌ Error upserting recipe "${recipeData.name}":`, error);
+        console.error(`   -> ❌ Error upserting recipe "${ recipeData.name }":`, error);
         return { skipped: true, created: false, error: true };
     }
 }
 
 // --- Main Seeding Function ---
 async function main() {
-    console.log(`🚀 Starting recipe seeding from ${CSV_FILE_NAME}...`);
+    console.log(`🚀 Starting recipe seeding from ${ CSV_FILE_NAME }...`);
     const csvFilePath = path.resolve(__dirname, CSV_FILE_NAME);
     const parsedRecipes: ParsedRecipe[] = [];
 
     // --- 1. Read and Parse CSV ---
     try {
-        console.log(`📄 Reading CSV file: ${csvFilePath}`);
-        if (!fs.existsSync(csvFilePath)) throw new Error(`CSV file not found: ${csvFilePath}`);
+        console.log(`📄 Reading CSV file: ${ csvFilePath }`);
+        if (!fs.existsSync(csvFilePath)) throw new Error(`CSV file not found: ${ csvFilePath }`);
         const fileContent = fs.readFileSync(csvFilePath, { encoding: 'utf-8' });
         const records: string[][] = parse(fileContent, { bom: true, skip_empty_lines: true, relax_column_count: true });
-        console.log(`📊 Parsed ${records.length} non-empty rows.`);
+        console.log(`📊 Parsed ${ records.length } non-empty rows.`);
 
         // Debug: Print first few rows to understand structure
         console.log("📋 CSV Structure Sample (first 10 rows):");
         for (let i = 0; i < Math.min(10, records.length); i++) {
-            console.log(`Row ${i + 1}: ${JSON.stringify(records[i])}`);
+            console.log(`Row ${ i + 1 }: ${ JSON.stringify(records[i]) }`);
         }
 
         let currentRecipe: ParsedRecipe | null = null;
@@ -166,7 +166,7 @@ async function main() {
                 if (currentRecipe) {
                     const reference = cells[1] || '';
                     currentRecipe.notes = reference;
-                    console.log(`Found reference for "${currentRecipe.name}": ${reference}`);
+                    console.log(`Found reference for "${ currentRecipe.name }": ${ reference }`);
                 }
                 continue;
             }
@@ -175,7 +175,7 @@ async function main() {
             else if (firstCell.toLowerCase().includes('recipe')) {
                 // Save previous recipe if it exists
                 if (currentRecipe && (currentRecipe.ingredients.length > 0 || currentRecipe.steps.length > 0)) {
-                    console.log(`Saving completed recipe: "${currentRecipe.name}" with ${currentRecipe.ingredients.length} ingredients and ${currentRecipe.steps.length} steps`);
+                    console.log(`Saving completed recipe: "${ currentRecipe.name }" with ${ currentRecipe.ingredients.length } ingredients and ${ currentRecipe.steps.length } steps`);
                     parsedRecipes.push(currentRecipe);
                 }
 
@@ -189,7 +189,7 @@ async function main() {
                 };
                 currentSection = 'none';
                 stepCounter = 1;
-                console.log(`>> Found new recipe: "${recipeName}" (Row ${rowNum})`);
+                console.log(`>> Found new recipe: "${ recipeName }" (Row ${ rowNum })`);
                 continue;
             }
 
@@ -198,7 +198,7 @@ async function main() {
                 if (currentRecipe) {
                     const reference = cells[1] || '';
                     currentRecipe.notes = reference;
-                    console.log(`Found reference for "${currentRecipe.name}": ${reference}`);
+                    console.log(`Found reference for "${ currentRecipe.name }": ${ reference }`);
                 }
                 continue;
             }
@@ -207,7 +207,7 @@ async function main() {
             else if (firstCell.toLowerCase().includes('ingredient')) {
                 if (currentRecipe) {
                     currentSection = 'ingredients';
-                    console.log(`Found ingredients section for "${currentRecipe.name}" at row ${rowNum}`);
+                    console.log(`Found ingredients section for "${ currentRecipe.name }" at row ${ rowNum }`);
                 }
                 continue;
             }
@@ -216,7 +216,7 @@ async function main() {
             else if (firstCell.toLowerCase().includes('steps')) {
                 if (currentRecipe) {
                     currentSection = 'steps';
-                    console.log(`Found steps section for "${currentRecipe.name}" at row ${rowNum}`);
+                    console.log(`Found steps section for "${ currentRecipe.name }" at row ${ rowNum }`);
                 }
                 continue;
             }
@@ -243,7 +243,7 @@ async function main() {
                         if (toTasteIndex !== -1) {
                             // This is a "to taste" ingredient
                             quantity = null;
-                            console.log(`  Adding ingredient: ${name} (to taste)`);
+                            console.log(`  Adding ingredient: ${ name } (to taste)`);
                         } else {
                             // Try to find quantity in other columns
                             for (let j = 0; j < cells.length; j++) {
@@ -263,7 +263,7 @@ async function main() {
                             // If no quantity found, default to 1
                             if (quantity === null) {
                                 quantity = 1;
-                                console.log(`  Warning: No quantity found for "${name}", defaulting to 1`);
+                                console.log(`  Warning: No quantity found for "${ name }", defaulting to 1`);
                             }
                         }
                     } else {
@@ -275,7 +275,7 @@ async function main() {
                             cells.some(c => c.toLowerCase().includes('to taste'))) {
                             // This is a "to taste" ingredient
                             quantity = null;
-                            console.log(`  Adding ingredient: ${name} (to taste)`);
+                            console.log(`  Adding ingredient: ${ name } (to taste)`);
                         } else if (!isNaN(parsedQuantity)) {
                             // Normal quantity
                             quantity = parsedQuantity;
@@ -299,14 +299,14 @@ async function main() {
                             // If still no quantity, default to 1
                             if (quantity === null) {
                                 quantity = 1;
-                                console.log(`  Warning: No quantity found for "${name}", defaulting to 1`);
+                                console.log(`  Warning: No quantity found for "${ name }", defaulting to 1`);
                             }
                         }
                     }
 
                     // Add ingredient if we have a name
                     if (name) {
-                        console.log(`  Adding ingredient: ${name} (${quantity === null ? 'to taste' : quantity} ${unit || 'no unit'})`);
+                        console.log(`  Adding ingredient: ${ name } (${ quantity === null ? 'to taste' : quantity } ${ unit || 'no unit' })`);
                         currentRecipe.ingredients.push({
                             name,
                             quantity,
@@ -314,7 +314,7 @@ async function main() {
                             rowNum
                         });
                     } else {
-                        console.warn(`Warn: Row ${rowNum} - Invalid ingredient data: ${JSON.stringify(cells)}`);
+                        console.warn(`Warn: Row ${ rowNum } - Invalid ingredient data: ${ JSON.stringify(cells) }`);
                     }
                 } else if (currentSection === 'steps') {
                     // Parse step: number, instruction
@@ -331,7 +331,7 @@ async function main() {
                     }
 
                     if (instruction) {
-                        console.log(`  Adding step ${stepNumber}: ${instruction.substring(0, 30)}...`);
+                        console.log(`  Adding step ${ stepNumber }: ${ instruction.substring(0, 30) }...`);
                         currentRecipe.steps.push({
                             number: stepNumber,
                             instruction,
@@ -345,12 +345,12 @@ async function main() {
 
         // Don't forget the last recipe
         if (currentRecipe && (currentRecipe.ingredients.length > 0 || currentRecipe.steps.length > 0)) {
-            console.log(`Saving final recipe: "${currentRecipe.name}" with ${currentRecipe.ingredients.length} ingredients and ${currentRecipe.steps.length} steps`);
+            console.log(`Saving final recipe: "${ currentRecipe.name }" with ${ currentRecipe.ingredients.length } ingredients and ${ currentRecipe.steps.length } steps`);
             parsedRecipes.push(currentRecipe);
         }
 
         if (parsedRecipes.length === 0) throw new Error("❌ No valid recipes extracted from CSV.");
-        console.log(`✅ CSV Parsed: Extracted data for ${parsedRecipes.length} recipes.`);
+        console.log(`✅ CSV Parsed: Extracted data for ${ parsedRecipes.length } recipes.`);
 
     } catch (error) {
         console.error('❌ Error reading/parsing CSV:', error);
@@ -359,7 +359,7 @@ async function main() {
     }
 
     // --- 2. Database Operations ---
-    console.log(`⚙️ Starting database transaction for ${parsedRecipes.length} recipes...`);
+    console.log(`⚙️ Starting database transaction for ${ parsedRecipes.length } recipes...`);
     let totalRecipesUpserted = 0;
     let totalRecipesCreated = 0;
     let totalRecipesSkippedOrError = 0;
@@ -374,7 +374,7 @@ async function main() {
             throw new Error(`❌ No units found in the database. Please create at least one unit before running this script.`);
         }
 
-        console.log(`✅ Using "${defaultUnit.name}" (${defaultUnit.abbreviation}) as default unit when none is specified.`);
+        console.log(`✅ Using "${ defaultUnit.name }" (${ defaultUnit.abbreviation }) as default unit when none is specified.`);
 
         // Process recipes in smaller batches to avoid transaction timeout
         const BATCH_SIZE = 10;
@@ -384,11 +384,11 @@ async function main() {
             recipeBatches.push(parsedRecipes.slice(i, i + BATCH_SIZE));
         }
 
-        console.log(`🔄 Processing ${recipeBatches.length} batches of recipes (max ${BATCH_SIZE} per batch)`);
+        console.log(`🔄 Processing ${ recipeBatches.length } batches of recipes (max ${ BATCH_SIZE } per batch)`);
 
         for (let batchIndex = 0; batchIndex < recipeBatches.length; batchIndex++) {
             const batch = recipeBatches[batchIndex];
-            console.log(`\n🔄 Processing batch ${batchIndex + 1}/${recipeBatches.length} with ${batch.length} recipes...`);
+            console.log(`\n🔄 Processing batch ${ batchIndex + 1 }/${ recipeBatches.length } with ${ batch.length } recipes...`);
 
             await prisma.$transaction(async (tx) => {
                 // Get/Create Default Category Once
@@ -413,7 +413,7 @@ async function main() {
 
                 // Look up ALL Units Once
                 const unitsMap = new Map<string, UnitOfMeasure>();
-                console.log(`🔍 Looking up ${allNeededUnitAbbrs.size} unique Units...`);
+                console.log(`🔍 Looking up ${ allNeededUnitAbbrs.size } unique Units...`);
 
                 // Add default unit to the map
                 unitsMap.set(defaultUnit.abbreviation.toLowerCase(), defaultUnit);
@@ -459,14 +459,14 @@ async function main() {
                     if (u) {
                         unitsMap.set(abbr.toLowerCase(), u);
                     } else {
-                        console.log(`⚠️ Unit "${abbr}" not found, will use default unit instead.`);
+                        console.log(`⚠️ Unit "${ abbr }" not found, will use default unit instead.`);
                     }
                 }
                 console.log(`✅ All required Units found.`);
 
                 // Look up or Create ALL Ingredients Once
                 const ingredientsMap = new Map<string, Ingredient>();
-                console.log(`🔍 Looking up/Creating ${allNeededIngredientNames.size} unique Ingredients...`);
+                console.log(`🔍 Looking up/Creating ${ allNeededIngredientNames.size } unique Ingredients...`);
                 let batchCreatedIngredientCount = 0;
 
                 for (const name of allNeededIngredientNames) {
@@ -508,21 +508,21 @@ async function main() {
                 }
 
                 totalNewIngredientsCreated += batchCreatedIngredientCount;
-                console.log(`✅ All required Ingredients found or created (${batchCreatedIngredientCount} new).`);
+                console.log(`✅ All required Ingredients found or created (${ batchCreatedIngredientCount } new).`);
 
                 // Upsert each recipe in this batch
-                console.log(`💾 Upserting ${batch.length} Recipe records...`);
+                console.log(`💾 Upserting ${ batch.length } Recipe records...`);
 
                 for (let i = 0; i < batch.length; i++) {
                     const recipeData = batch[i];
 
                     if (!recipeData || (!recipeData.ingredients.length && !recipeData.steps.length)) {
-                        console.warn(`⚠️ Skipping "${recipeData?.name}" (empty).`);
+                        console.warn(`⚠️ Skipping "${ recipeData?.name }" (empty).`);
                         totalRecipesSkippedOrError++;
                         continue;
                     }
 
-                    console.log(` -> Processing "${recipeData.name}"...`);
+                    console.log(` -> Processing "${ recipeData.name }"...`);
                     try {
                         const result = await upsertRecipeInTransaction(
                             tx,
@@ -536,7 +536,7 @@ async function main() {
                         if (result.created) totalRecipesCreated++;
                         if (result.error) totalRecipesSkippedOrError++;
                     } catch (recipeError) {
-                        console.error(`❌ Error processing recipe "${recipeData.name}" within transaction:`, recipeError);
+                        console.error(`❌ Error processing recipe "${ recipeData.name }" within transaction:`, recipeError);
                         totalRecipesSkippedOrError++;
                     }
                 }
@@ -544,10 +544,10 @@ async function main() {
         }
 
         console.log(`\n✅ Database operations complete.`);
-        console.log(`   Total Recipes Upserted Attempted: ${totalRecipesUpserted}`);
-        console.log(`   Recipes Newly Created:            ${totalRecipesCreated}`);
-        console.log(`   Recipes Skipped/Errored:          ${totalRecipesSkippedOrError}`);
-        console.log(`   Total New Ingredients Created:    ${totalNewIngredientsCreated}`);
+        console.log(`   Total Recipes Upserted Attempted: ${ totalRecipesUpserted }`);
+        console.log(`   Recipes Newly Created:            ${ totalRecipesCreated }`);
+        console.log(`   Recipes Skipped/Errored:          ${ totalRecipesSkippedOrError }`);
+        console.log(`   Total New Ingredients Created:    ${ totalNewIngredientsCreated }`);
 
     } catch (error) {
         console.error('❌ Top-level error during seeding:', error);
