@@ -26,7 +26,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^6.5.0",
+    "@prisma/client": "^6.6.0",
     "axios": "^1.8.4",
     "bcrypt": "^5.1.1",
     "compression": "^1.8.0",
@@ -37,7 +37,9 @@
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
+    "nodemailer": "^6.10.1",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -48,12 +50,14 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/express-session": "^1.18.1",
+    "@types/jsonwebtoken": "^9.0.9",
     "@types/morgan": "^1.9.9",
     "@types/node": "^22.13.14",
+    "@types/nodemailer": "^6.4.17",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.1",
     "nodemon": "^3.1.9",
-    "prisma": "^6.5.0",
+    "prisma": "^6.6.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
   }

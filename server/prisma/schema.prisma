@@ -628,3 +628,60 @@ model ShoppingListItem {
   @@index([categoryId])
   @@map("shopping_list_item")
 }
+
+
+// Add this to your existing schema.prisma file
+
+enum UserStatus {
+  PENDING_VERIFICATION // Email not yet verified
+  ACTIVE
+  SUSPENDED
+  DELETED // Soft delete
+}
+
+model User {
+  id                Int      @id @default(autoincrement()) @map("user_id")
+  email             String   @unique
+  name              String
+  // *** Store HASHED password only ***
+  password          String   // Application logic must handle hashing with bcrypt/argon2
+
+  // --- Added Fields ---
+  emailVerified     Boolean    @default(false) @map("email_verified")
+  status            UserStatus @default(PENDING_VERIFICATION) // Use Enum for status
+  lastLoginAt       DateTime?  @map("last_login_at") @db.Timestamptz(3)
+
+  // --- Tracking Fields ---
+  createdBy         String?    @map("created_by")
+  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastUpdatedBy     String?    @map("last_updated_by")
+  updatedAt         DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  // Relation to password reset tokens
+  passwordResetTokens PasswordResetToken[]
+
+  @@map("user") // Use singular table name
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement()) @map("reset_token_id")
+  userId    Int      @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // *** Store HASH of the token sent to user ***
+  token     String   @unique // Store hash here for security lookup
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+
+  // Track when token was consumed
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3) 
+  // --- Tracking Fields ---
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastUpdatedBy String?  @map("last_updated_by")
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+
+  @@index([userId]) // Index for finding user's tokens
+  @@index([token]) // Index already implied by unique, but good practice
+  @@index([expiresAt]) // Index for cleanup jobs
+  @@map("password_reset_token") // Use singular table name
+}

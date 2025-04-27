@@ -15,11 +15,16 @@ import { eventRoutes } from './routes/eventRoutes';
 import { menuRoutes } from './routes/menuRoutes';
 import { scheduledMealRoutes } from './routes/scheduledMealRoutes';
 import { shoppingListRoutes } from './routes/shoppingListRoutes';
+import { authRoutes } from "./routes/authRoutes";
 
 
 // Initialize express app
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// development mode check and if API testing is enabled
+const isDev = process.env.NODE_ENV === "development";
+const allowTestingWithoutAuth = isDev && process.env.ALLOW_API_TESTING === "true";
 
 // Middleware
 app.use(cors({
@@ -71,10 +76,22 @@ app.use('/api/events', eventRoutes);
 app.use('/api/menus', menuRoutes);
 app.use('/api/scheduled-meals', scheduledMealRoutes);
 app.use('/api', shoppingListRoutes);
+app.use('/api/auth', authRoutes);
 // Health check endpoint
 app.get('/health', (_req, res) => {
     res.status(200).json({ status: 'ok' });
 });
+
+// API testing info route (only in development)
+if (allowTestingWithoutAuth) {
+    app.get("/api/test-info", (_req, res) => {
+        res.status(200).json({
+            message: "API testing mode is enabled",
+            instructions: "Add 'x-api-test: bypass-auth' header to bypass authentication",
+            environment: process.env.NODE_ENV,
+        });
+    });
+}
 
 // Error handling middleware
 app.use(errorHandler as unknown as ErrorRequestHandler);
@@ -83,3 +100,5 @@ app.use(errorHandler as unknown as ErrorRequestHandler);
 app.listen(PORT, () => {
     console.log(`Server running on port ${ PORT }`);
 });
+
+export default app;
