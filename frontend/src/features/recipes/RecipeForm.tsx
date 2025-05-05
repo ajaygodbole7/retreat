@@ -85,14 +85,20 @@ const defaultStep: Partial<RecipeStep> = {
 }
 
 export function RecipeForm() {
-    // Determine edit vs new based on route
-    const pathname = window.location.pathname
-    const isEditRoute = pathname.includes("/edit")
-    const params = useParams({ from: isEditRoute ? "/recipes/$recipeId/edit" : "/recipes/new" })
-    const navigate = useNavigate()
-    const { recipeId } = params
-    const numericRecipeId = recipeId && recipeId !== "new" ? Number.parseInt(recipeId) : undefined
-    const isEditMode = !!numericRecipeId && !isNaN(numericRecipeId)
+
+    // Access route params with strict: false to work with nested routes
+    const params = useParams({ strict: false });
+
+    // Get the recipeId from params
+    const { recipeId } = params;
+
+    // Convert to number if it's a valid ID (not "new" or other non-numeric value)
+    const numericRecipeId = recipeId && recipeId !== "new" ? Number.parseInt(recipeId) : undefined;
+
+    // Determine edit mode by checking if we have a valid numeric ID
+    const isEditMode = !!numericRecipeId && !isNaN(numericRecipeId);
+
+    const navigate = useNavigate();
 
     // Form state
     const [recipe, setRecipe] = useState<Partial<CreateRecipeInput | UpdateRecipeInput>>(defaultRecipe)
@@ -286,7 +292,7 @@ export function RecipeForm() {
     }
     const handleCancel = () => {
         if (isEditMode && numericRecipeId) {
-            navigate({ to: `/recipes/${numericRecipeId}` })
+            navigate({ to: `/recipes/${ numericRecipeId }` })
         } else {
             navigate({ to: "/recipes" })
         }

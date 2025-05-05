@@ -4,21 +4,24 @@ import bcrypt from "bcrypt";
 
 
 // JWT configuration
-
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET || "get lost";
 const JWT_EXPIRY = process.env.JWT_EXPIRY || "24h"; // 24 hours
 
+if (!JWT_SECRET) {
+    console.error("FATAL ERROR: JWT_SECRET environment variable is not set.");
+    // Crash prevents insecure operation
+    throw new Error("JWT_SECRET environment variable is missing. Cannot start server.");
+}
 /**
  * Generates a JWT token for a user
  * @param userId The user ID to include in the token
  * @returns A signed JWT token
  */
 export function generateToken(userId: number): string {
-
-    // @ts-expect-error
+    // @ts-expect-error - TS Compiler cannot infer JWT_SECRET is string despite runtime check.
     return jwt.sign(
         { id: userId.toString() },
-        JWT_SECRET,// Explicitly convert to string
+        JWT_SECRET!,
         { expiresIn: JWT_EXPIRY }
     );
 }

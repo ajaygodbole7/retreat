@@ -31,10 +31,14 @@ import type {
 import type {
     ShoppingListItemData,
     ShoppingListData,
-    ShoppingListWithItems,    
+    ShoppingListWithItems,
     AggregatedShoppingItem,
     GroupedShoppingList
 } from "@server/types/shopping-list-types"
+
+import type {
+    LoginInput, RegisterInput, User, AuthResponse
+} from '@server/types/auth-types';
 
 // Create axios instance with base URL and default headers
 const api = axios.create({
@@ -45,10 +49,18 @@ const api = axios.create({
     withCredentials: true
 });
 
-// Add request interceptor for handling auth tokens if needed
+// --- Axios Request Interceptor ---
+// Automatically attach the auth token from localStorage to outgoing requests
 api.interceptors.request.use(
     (config) => {
-        // You can add auth tokens here if needed
+        // Retrieve the token from localStorage
+        const token = localStorage.getItem('authToken');
+        // If a token exists and the request has headers, add the Authorization header
+        if (token && config.headers) {
+            config.headers['Authorization'] = `Bearer ${ token }`;
+            // Optional: Log that the token is being added (useful for debugging)
+            console.log('API Interceptor: Added Auth Token to request for URL:', config.url);
+        }
         return config
     },
     (error) => {
@@ -64,11 +76,25 @@ api.interceptors.response.use(
         // Handle errors globally
         if (error.response) {
             // Server responded with a status code outside of 2xx range
-            console.error('API Error:', error.response.data);
+            console.error('API Error Response:', {
+                status: error.response.status,
+                data: error.response.data,
+                url: error.config.url,
+                method: error.config.method,
+            });
+            if (error.response.status === 401) {
+                // Potential global action: You could trigger a logout here if needed,
+                // but usually it's better handled by the component/hook that made the call.
+                console.warn('Unauthorized (401) response detected. Token might be invalid/expired.');
+                // --- Dispatch custom event for global handling ---
+                // This allows AuthContext (or other listeners) to react without direct coupling.
+                window.dispatchEvent(new CustomEvent('auth-unauthorized', { detail: { error } }));
+                // --- End Event Dispatch ---
+            }
+
         } else if (error.request) {
             // Request was made but no response was received
-            console.error('Network Error:', error.request);
-        } else {
+            console.error('API Network Error:', error.message, 'URL:', error.config?.url);
             // Something else happened while setting up the request
             console.error('Error:', error.message);
         }
@@ -465,5 +491,51 @@ export const shoppingListApi = {
         return response.data;
     }
 };
+
+// --- Authentication API Definitions ---
+export const authApi = {
+    /**
+     * Sends login credentials to the backend.
+     * @param credentials - Email and password object.
+     * @returns Promise resolving to AuthResponse containing token and user data.
+     */
+    login: async (credentials: LoginInput): Promise<AuthResponse> => {
+        console.log("API Client: Calling POST /auth/login");
+        const response = await api.post('/auth/login', credentials);
+        return response.data;
+    },
+
+    /**
+     * Sends registration data to the backend.
+     * @param userData - Name, email, and password object.
+     * @returns Promise resolving to an object with a success message and basic user info.
+     */
+    register: async (userData: RegisterInput): Promise<{ message: string; user: User }> => {
+        console.log("API Client: Calling POST /auth/register");
+        const response = await api.post('/auth/register', userData);
+        return response.data;
+    },
+
+    /**
+     * Fetches the current user's profile information from the backend.
+     * Relies on the interceptor to attach the Authorization header.
+     * @returns Promise resolving to the User object.
+     */
+    getCurrentUser: async (): Promise<User> => {
+        console.log("API Client: Calling GET /auth/me");
+        const response = await api.get('/auth/me');
+        return response.data;
+    },
+
+    /**
+     * Optional: Backend logout endpoint call.
+     * If your backend invalidates tokens or sessions server-side on logout.
+     */
+    // logout: async (): Promise<void> => {
+    //     console.log("API Client: Calling POST /auth/logout");
+    //     await api.post('/auth/logout');
+    // },
+};
+
 
 export default api;

@@ -15,7 +15,24 @@ export const validateRequest = (options: ValidateRequestOptions) => {
             }
 
             if (options.query) {
-                req.query = await options.query.parseAsync(req.query);
+                // Validate the query parameters
+                const validatedQuery = await options.query.parseAsync(req.query);
+
+                // Clear and update the query object properties individually
+                // This preserves the original req.query object but updates its contents
+                const originalQuery = req.query;
+
+                // Remove all existing properties
+                Object.keys(originalQuery).forEach(key => {
+                    delete (originalQuery as any)[key];
+                });
+
+                // Add the validated properties
+                Object.entries(validatedQuery).forEach(([key, value]) => {
+                    (originalQuery as any)[key] = value;
+                });
+
+                // Now req.query contains the validated data without reassigning the object
             }
 
             if (options.body) {

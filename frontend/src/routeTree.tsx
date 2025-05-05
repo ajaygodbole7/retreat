@@ -1,181 +1,274 @@
-// frontend/src/routeTree.tsx
-import { createRootRoute, createRoute, createRouter } from "@tanstack/react-router"
-import { RootLayout } from "./components/layouts/RootLayout"
-import { IngredientsPage } from "./features/ingredients/IngredientsPage"
-import { IngredientForm } from "./features/ingredients/IngredientForm"
-import { IngredientDetail } from "./features/ingredients/IngredientDetail"
-import { RecipesPage } from "./features/recipes/RecipesPage"
-import { RecipeDetail } from "./features/recipes/RecipeDetail"
-import { RecipeForm } from "./features/recipes/RecipeFormGemini"
-//import { RecipeForm } from "./features/recipes/RecipeForm"
-//import { IntegratedRecipeForm } from "./features/recipes/IntegratedRecipeForm"
-//import { CompleteRecipeForm } from "./features/recipes/CompleteRecipeForm"
-// Event Imports
+// src/routeTree.tsx
+import {
+    createRootRouteWithContext,
+    createRoute,
+    createRouter,
+    redirect,
+    Outlet,
+    // Import types for route configuration and context
+    type BeforeLoadContext,
+    type RouteContext,
+    type RouteOptions, // Import RouteOptions for cleaner loader typing
+    type RouteConfig // Import RouteConfig
+} from "@tanstack/react-router";
+import { RootLayout } from "./components/layouts/RootLayout";
+import type { AuthContextType } from './contexts/auth-context'; // Ensure path is correct
+
+// Import Pages/Components
+import { IngredientsPage } from "./features/ingredients/IngredientsPage";
+import { IngredientForm } from "./features/ingredients/IngredientForm";
+import { IngredientDetail } from "./features/ingredients/IngredientDetail";
+import { RecipesPage } from "./features/recipes/RecipesPage";
+import { RecipeDetail } from "./features/recipes/RecipeDetail";
+import { RecipeForm } from "./features/recipes/RecipeFormGemini";
 import { EventsPage } from "./features/events/EventsPage";
 import { EventForm } from "./features/events/EventForm";
 import { EventDetail } from "./features/events/EventDetail";
-import ComingSoon from "./pages/ComingSoon"
-import NotFound from "./pages/NotFound"
-import UnderConstruction from "./pages/UnderConstruction"
-import Dashboard from "./pages/DashboardNew"
+import { LoginPage } from "./features/auth/LoginPage"; // Assuming moved
+import { RegisterPage } from "./features/auth/RegisterPage"; // Assuming moved
+import ComingSoon from "./pages/ComingSoon";
+import NotFound from "./pages/NotFound";
+import UnderConstruction from "./pages/UnderConstruction";
+import Dashboard from "./pages/DashboardNew";
+import { Loader2 } from "lucide-react";
+
+// --- Define Router Context Interface ---
+interface MyRouterContext extends RouteContext {
+    auth: AuthContextType;
+}
 
 // --- Type Helper for Loader Context ---
+// Defines the shape of data returned by loaders for Edit/New forms
 interface EditContext { mode: 'edit'; id: number }
 interface NewContext { mode: 'new' }
+// Union type for components handling both modes
+type FormRouteLoaderData = EditContext | NewContext;
 
-// Define specific context types for clarity
-type EventFormRouteContext = EditContext | NewContext;
-
-// Create the root route
-export const rootRoute = createRootRoute({
+// --- Create Root Route with Context ---
+export const rootRoute = createRootRouteWithContext<MyRouterContext>()({
     component: RootLayout,
-})
-
-// Create routes
-const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/",
-    component: Dashboard,
-})
-
-// Ingredients routes
-const ingredientsRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/ingredients",
-    component: IngredientsPage,
-})
-
-const newIngredientRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/ingredients/new",
-    component: IngredientForm,
-})
-
-const ingredientDetailRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/ingredients/$ingredientId",
-    component: IngredientDetail,
-})
-
-const editIngredientRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/ingredients/$ingredientId/edit",
-    component: IngredientForm,
-})
-
-// Recipe routes
-
-const recipesRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/recipes",
-    component: RecipesPage,
-})
-
-const newRecipeRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/recipes/new",
-    component: RecipeForm,
-
-})
-
-const recipeDetailRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/recipes/$recipeId",
-    component: RecipeDetail,
-})
-
-const editRecipeRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/recipes/$recipeId/edit",
-    component: RecipeForm,
-})
-
-/// --- Event Routes (Loaders added here) ---
-const eventsIndexRoute = createRoute({ 
-    getParentRoute: () => rootRoute, 
-    path: "/events", component: EventsPage 
+    // Optional: Global pending component
+    // pendingComponent: () => <div className="p-4 text-center"><Loader2 className="h-6 w-6 animate-spin inline-block" /></div>,
 });
 
-export const newEventRoute = createRoute({
+// --- Authentication Guard Function ---
+const ensureAuthenticated = ({ context, location }: BeforeLoadContext<MyRouterContext>) => {
+    if (!context.auth.isLoading && !context.auth.isAuthenticated) {
+        throw redirect({ to: '/login', search: { redirect: location.href }, replace: true });
+    }
+};
+
+// --- Define Public Routes ---
+const loginRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "/events/new", // Path string is the default ID
-    component: EventForm,
-    loader: (): NewEventContext => {
-        console.log("Loader executing for /events/new");
-        return { mode: 'new' };
-    },
+    path: "/login",
+    component: LoginPage,
+    beforeLoad: ({ context }) => { if (!context.auth.isLoading && context.auth.isAuthenticated) throw redirect({ to: '/', replace: true }); }
 });
 
-// Event Detail Route (no loader needed for detail display page itself)
-const eventDetailRoute = createRoute({
+const registerRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "/events/$eventId",
-    component: EventDetail,
-});
-// Edit Event Route with Loader
-export const editEventRoute = createRoute({ // *** Export ***
-    getParentRoute: () => rootRoute,
-    path: "/events/$eventId/edit", // Path string is the default ID
-    component: EventForm,
-    loader: ({ params }): EditContext => {
-        console.log("Loader executing for /events/$eventId/edit with params:", params);
-        const eventId = Number.parseInt(params.eventId, 10);
-        if (isNaN(eventId)) { throw new Error("Invalid Event ID"); }
-        return { mode: 'edit', id: eventId };
-    },
+    path: "/register",
+    component: RegisterPage,
+    beforeLoad: ({ context }) => { if (!context.auth.isLoading && context.auth.isAuthenticated) throw redirect({ to: '/', replace: true }); }
 });
 
 const comingSoonRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/coming-soon",
-    component: ComingSoon,
-})
-
+    component: ComingSoon
+});
 const underConstructionRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/under-construction",
-    component: UnderConstruction,
-})
+    component: UnderConstruction
+});
 
+// --- Define Authenticated Parent Route ---
+const authenticatedRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    id: 'authenticated',
+    beforeLoad: ensureAuthenticated, // Apply guard here
+    pendingComponent: () => ( // Loading state for protected section
+        <div className="flex justify-center items-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" /><span className="ml-2">Loading...</span>
+        </div>
+    ),
+    component: () => <Outlet />, // Render children
+});
+
+// --- Define Protected Routes (Children of authenticatedRoute) ---
+
+// Dashboard
+const indexRoute = createRoute({
+    getParentRoute: () => authenticatedRoute,
+    path: "/",
+    component: Dashboard
+});
+
+// --- Ingredients ---
+const ingredientsRoute = createRoute({
+    getParentRoute: () => authenticatedRoute,
+    path: "/ingredients",
+    component: IngredientsPage
+});
+// New Ingredient Route - Needs Loader for mode
+const newIngredientRoute = createRoute({
+    getParentRoute: () => authenticatedRoute,
+    path: "/ingredients/new",
+    component: IngredientForm,
+    loader: (): NewContext => ({ mode: 'new' }) // Provide 'new' mode context
+});
+const ingredientDetailRoute = createRoute({
+    getParentRoute: () => authenticatedRoute,
+    path: "/ingredients/$ingredientId",
+    component: IngredientDetail,
+    // Optional: Loader to fetch ingredient data *before* component renders
+    // loader: async ({ params }) => ingredientApi.getById(Number(params.ingredientId)),
+});
+// Edit Ingredient Route - Needs Loader for mode and ID
+const editIngredientRoute = createRoute({
+    getParentRoute: () => authenticatedRoute,
+    path: "/ingredients/$ingredientId/edit",
+    component: IngredientForm,
+    loader: ({ params }): EditContext => { // Provide 'edit' mode context and ID
+        const id = Number.parseInt(params.ingredientId, 10);
+        if (isNaN(id)) throw new Error("Invalid Ingredient ID");
+        return { mode: 'edit', id };
+    }
+});
+
+// --- Recipes ---
+const recipesRoute = createRoute({ getParentRoute: () => authenticatedRoute, path: "/recipes", component: RecipesPage });
+// New Recipe Route - Needs Loader for mode
+const newRecipeRoute = createRoute({
+    getParentRoute: () => authenticatedRoute, // Corrected parent
+    path: "/recipes/new",
+    component: RecipeForm,
+    loader: (): NewContext => ({ mode: 'new' }) // Provide 'new' mode context
+});
+const recipeDetailRoute = createRoute({
+    getParentRoute: () => authenticatedRoute,
+    path: "/recipes/$recipeId",
+    component: RecipeDetail,
+    // Optional: Loader to fetch recipe data
+    // loader: async ({ params }) => recipeApi.getById(Number(params.recipeId)),
+});
+// Edit Recipe Route - Needs Loader for mode and ID
+const editRecipeRoute = createRoute({
+    getParentRoute: () => authenticatedRoute,
+    path: "/recipes/$recipeId/edit",
+    component: RecipeForm,
+    loader: ({ params }): EditContext => { // Provide 'edit' mode context and ID
+        const id = Number.parseInt(params.recipeId, 10);
+        if (isNaN(id)) throw new Error("Invalid Recipe ID");
+        return { mode: 'edit', id };
+    }
+});
+
+// --- Events ---
+const eventsIndexRoute = createRoute({ getParentRoute: () => authenticatedRoute, path: "/events", component: EventsPage });
+// New Event Route - Needs Loader for mode
+const newEventRoute = createRoute({
+    getParentRoute: () => authenticatedRoute,
+    path: "/events/new",
+    component: EventForm,
+    loader: (): NewContext => ({ mode: 'new' }) // Provide 'new' mode context
+});
+const eventDetailRoute = createRoute({
+    getParentRoute: () => authenticatedRoute,
+    path: "/events/$eventId",
+    component: EventDetail,
+    // Optional: Loader to fetch event data
+    // loader: async ({ params }) => eventApi.getById(Number(params.eventId)),
+});
+// Edit Event Route - Needs Loader for mode and ID
+const editEventRoute = createRoute({
+    getParentRoute: () => authenticatedRoute,
+    path: "/events/$eventId/edit",
+    component: EventForm,
+    loader: ({ params }): EditContext => { // Provide 'edit' mode context and ID
+        const id = Number.parseInt(params.eventId, 10);
+        if (isNaN(id)) throw new Error("Invalid Event ID");
+        return { mode: 'edit', id };
+    }
+});
+
+// --- Not Found Route ---
 const notFoundRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "*",
     component: NotFound,
-})
+});
 
-// Create the route tree
+// --- Build Route Tree ---
 export const routeTree = rootRoute.addChildren([
-    indexRoute,
-    ingredientsRoute,
-    newIngredientRoute,
-    ingredientDetailRoute,
-    editIngredientRoute,
-    recipesRoute,
-    newRecipeRoute,
-    recipeDetailRoute,
-    editRecipeRoute,
-    // Events
-    eventsIndexRoute,
-    newEventRoute,
-    eventDetailRoute,
-    editEventRoute,
+    // Public Routes
+    loginRoute,
+    registerRoute,
     comingSoonRoute,
     underConstructionRoute,
+
+    // Authenticated Section
+    authenticatedRoute.addChildren([
+        indexRoute,
+        // Ingredients
+        ingredientsRoute,
+        newIngredientRoute,     // Now has loader
+        ingredientDetailRoute,
+        editIngredientRoute,    // Now has loader
+        // Recipes
+        recipesRoute,
+        newRecipeRoute,         // Now has loader & correct parent
+        recipeDetailRoute,
+        editRecipeRoute,        // Now has loader
+        // Events
+        eventsIndexRoute,
+        newEventRoute,          // Now has loader
+        eventDetailRoute,
+        editEventRoute,         // Now has loader
+        // ... other protected routes
+    ]),
+
+    // Catch-all Not Found Route (must be last)
     notFoundRoute,
-])
+]);
 
-// Create and export the router
-export const router = createRouter({ routeTree })
+// --- Create Router Instance ---
+export const router = createRouter({
+    routeTree,
+    context: { auth: undefined! },
+});
 
-// Register the router for type safety
+// --- Register Router Types ---
+// Define Params, Search, and LoaderData for type safety
 declare module "@tanstack/react-router" {
     interface Register {
         router: typeof router;
         routeTree: typeof routeTree;
-        // Tell TypeScript the shape of loaderData for specific route paths
-        '/events/new': { LoaderData: NewContext; };
-        '/events/$eventId/edit': { LoaderData: EditContext; };
-        '/recipes/new': { LoaderData: NewContext; }; // Recipe contexts
-        '/recipes/$recipeId/edit': { LoaderData: EditContext; };
+
+        // --- Define Params (string from URL) ---
+        '/ingredients/$ingredientId': { Params: { ingredientId: string } };
+        '/ingredients/$ingredientId/edit': { Params: { ingredientId: string } };
+        '/recipes/$recipeId': { Params: { recipeId: string } };
+        '/recipes/$recipeId/edit': { Params: { recipeId: string } };
+        '/events/$eventId': { Params: { eventId: string } };
+        '/events/$eventId/edit': { Params: { eventId: string } };
+
+        // --- Define Search Params ---
+        '/login': { Search: LoginSearch };
+
+        // --- Define Loader Data (Matches loader return types) ---
+        // ** All New/Edit routes now have loaders **
+        '/ingredients/new': { LoaderData: NewContext };
+        '/ingredients/$ingredientId/edit': { LoaderData: EditContext };
+        '/recipes/new': { LoaderData: NewContext };
+        '/recipes/$recipeId/edit': { LoaderData: EditContext };
+        '/events/new': { LoaderData: NewContext };
+        '/events/$eventId/edit': { LoaderData: EditContext };
+    }
+    // Define LoginSearch interface if needed
+    interface LoginSearch {
+        redirect?: string;
     }
 }

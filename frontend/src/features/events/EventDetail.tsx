@@ -73,7 +73,8 @@ interface EventDetailProps {
 }
 
 export function EventDetail(props: EventDetailProps) {
-    const params = useParams({ from: "/events/$eventId" });
+    // Use strict: false to access params from nested routes
+    const params = useParams({ strict: false });
     const eventId = props.eventId !== undefined
         ? props.eventId
         : Number(params.eventId);

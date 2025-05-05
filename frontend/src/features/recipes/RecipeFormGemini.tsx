@@ -3,9 +3,7 @@
 import type React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useParams, Link } from "@tanstack/react-router";
-import {
-    Card, CardContent, CardHeader, CardTitle, CardDescription
-} from "../../components/ui/card"; // Assuming path is correct
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
@@ -183,14 +181,19 @@ function SimpleCombobox({
 
 // --- Main RecipeForm Component ---
 export function RecipeForm() {
-    // --- Router Hooks ---
-    const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-    const isEditRoute = pathname.includes("/edit");
-    const params = useParams({ from: isEditRoute ? "/recipes/$recipeId/edit" : "/recipes/new" });
-    const navigate = useNavigate();
+    // Access route params with strict: false to work with nested routes
+    const params = useParams({ strict: false });
+
+    // Get the recipeId from params
     const { recipeId } = params;
+
+    // Convert to number if it's a valid ID (not "new" or other non-numeric value)
     const numericRecipeId = recipeId && recipeId !== "new" ? Number.parseInt(recipeId) : undefined;
+
+    // Determine edit mode by checking if we have a valid numeric ID
     const isEditMode = !!numericRecipeId && !isNaN(numericRecipeId);
+
+    const navigate = useNavigate();
 
     // --- State Declarations ---
     const [recipe, setRecipe] = useState<Partial<CreateRecipeInput | UpdateRecipeInput>>(defaultRecipe);
@@ -316,7 +319,7 @@ export function RecipeForm() {
     );
 
     const unitOptions = useMemo((): ComboboxOption[] =>
-        allUnits.map(unit => ({ value: unit.id.toString(), label: `${unit.name} (${unit.abbreviation || 'unit'})` })),
+        allUnits.map(unit => ({ value: unit.id.toString(), label: `${ unit.name } (${ unit.abbreviation || 'unit' })` })),
         [allUnits]
     );
 
@@ -612,7 +615,7 @@ export function RecipeForm() {
         } catch (error) {
             // Handle API errors
             console.error("Error saving recipe:", error);
-            alert(`Error saving recipe: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            alert(`Error saving recipe: ${ error instanceof Error ? error.message : 'Unknown error' }`);
             // Potentially show error message in the UI instead of alert
         } finally {
             setIsSaving(false); // Stop loading indicator on button
@@ -624,7 +627,7 @@ export function RecipeForm() {
         // Consider adding a confirmation dialog if changes have been made ("Are you sure?")
         if (isEditMode && numericRecipeId) {
             // Navigate back to the recipe view page
-            navigate({ to: `/recipes/${numericRecipeId}` });
+            navigate({ to: `/recipes/${ numericRecipeId }` });
         } else {
             // Navigate back to the main recipes list
             navigate({ to: "/recipes" });
@@ -704,7 +707,7 @@ export function RecipeForm() {
                                     step="1" // Usually whole servings
                                     value={baseServingSize} // Controlled by baseServingSize state
                                     onChange={handleNumberChange}
-                                    placeholder={`${DEFAULT_BASE_SERVING_SIZE}`}
+                                    placeholder={`${ DEFAULT_BASE_SERVING_SIZE }`}
                                     required
                                     className="h-9"
                                 />
@@ -810,7 +813,7 @@ export function RecipeForm() {
                                             type="button"
                                             onClick={() => handleRemoveTag(tag)}
                                             className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                            aria-label={`Remove ${tag} tag`}
+                                            aria-label={`Remove ${ tag } tag`}
                                         >
                                             <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
                                         </button>
@@ -867,7 +870,7 @@ export function RecipeForm() {
                                         }
 
                                         return (
-                                            <div key={`ing-${ing.id || index}`} className="p-3 flex items-start gap-x-3 sm:gap-x-4 hover:bg-muted/30 transition-colors">
+                                            <div key={`ing-${ ing.id || index }`} className="p-3 flex items-start gap-x-3 sm:gap-x-4 hover:bg-muted/30 transition-colors">
                                                 {/* Column 1: Original Quantity & Unit */}
                                                 <div className="text-sm text-right flex-shrink-0 w-16 sm:w-20 pt-0.5">
                                                     <span className="font-medium">{ing.quantity ? formatQuantity(ing.quantity) : '-'}</span>
@@ -934,7 +937,7 @@ export function RecipeForm() {
                         {/* Inline Ingredient Add/Edit Form Section */}
                         <div id="ingredient-inline-form" className="border rounded-md p-4 space-y-3 bg-muted/30">
                             <h4 className="text-md font-semibold mb-2">
-                                {editingIngredientIndex !== null ? `Editing: ${getIngredientName(ingredients[editingIngredientIndex]?.ingredientId)}` : 'Add New Ingredient'}
+                                {editingIngredientIndex !== null ? `Editing: ${ getIngredientName(ingredients[editingIngredientIndex]?.ingredientId) }` : 'Add New Ingredient'}
                             </h4>
                             {/* Layout for the inline form fields */}
                             <div className="grid grid-cols-1 sm:grid-cols-[1fr_2fr] gap-x-4 gap-y-3 items-start">
@@ -1034,7 +1037,7 @@ export function RecipeForm() {
                             ) : (
                                 // Iterate over steps and display each
                                 steps.map((step, index) => (
-                                    <div key={`step-${step.id || index}`} className="border rounded-md p-3 flex items-start gap-3 bg-background hover:bg-muted/30 transition-colors">
+                                    <div key={`step-${ step.id || index }`} className="border rounded-md p-3 flex items-start gap-3 bg-background hover:bg-muted/30 transition-colors">
                                         {/* Step Number */}
                                         <div className="font-semibold text-lg text-muted-foreground pt-0.5 select-none">{step.stepNumber}.</div>
                                         {/* Step Instruction (or editing textarea) */}

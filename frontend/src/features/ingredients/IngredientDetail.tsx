@@ -22,7 +22,8 @@ import { useIngredient, useDeleteIngredient } from "../../hooks/useIngredients"
 
 export function IngredientDetail() {
     // Get the route params correctly from TanStack Router
-    const params = useParams({ from: "/ingredients/$ingredientId" })
+    //const params = useParams({ from: "/ingredients/$ingredientId" })
+    const params = useParams({strict: false});
     const { ingredientId } = params
     console.log("IngredientDetail - Route Params:", params)
 

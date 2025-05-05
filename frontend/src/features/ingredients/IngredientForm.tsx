@@ -61,26 +61,32 @@ type FormValues = z.infer<typeof formSchema>
 
 export function IngredientForm() {
     // Check which route we're on using TanStack Router
-    const pathname = window.location.pathname
-    const isEditRoute = pathname.includes("/edit")
+    //const pathname = window.location.pathname
+    //const isEditRoute = pathname.includes("/edit")
 
     // Use the appropriate route pattern
-    const params = useParams({
-        from: isEditRoute ? "/ingredients/$ingredientId/edit" : "/ingredients/new",
-    })
+    //const params = useParams({
+    //    from: isEditRoute ? "/ingredients/$ingredientId/edit" : "/ingredients/new",
+    //})
 
     // For edit route, ingredientId will exist
     // For new route, it will be undefined
-    const ingredientId = params.ingredientId
+    //const ingredientId = params.ingredientId
+    // Get the route context and loader data to determine mode
+    // Access route params with strict: false to work with nested routes
+    const params = useParams({ strict: false })
+
+    // Get the ingredientId from params
+    const { ingredientId } = params
+
+    // Determine edit mode by checking if ingredientId exists in the URL
+    const isEditing = !!ingredientId
+    const numericIngredientId = ingredientId ? Number.parseInt(ingredientId) : undefined
 
     console.log("IngredientForm - Route Params:", params)
-    console.log("IngredientForm - Route:", pathname)
-
-    const numericIngredientId = ingredientId ? Number.parseInt(ingredientId) : undefined
-    console.log("Parsed ingredientId:", numericIngredientId)
-
-    const isEditing = !!numericIngredientId && !isNaN(numericIngredientId)
+    //console.log("IngredientForm - Loader Data:", loaderData)
     console.log("Is editing mode:", isEditing)
+    console.log("Ingredient ID:", numericIngredientId)
 
     const navigate = useNavigate()
 
@@ -351,7 +357,7 @@ export function IngredientForm() {
                         <ArrowLeft className="h-4 w-4" />
                     </Link>
                 </Button>
-                <h1 className="text-2xl font-bold">{isEditing ? `Editing: ${ingredient?.name}` : "Add Ingredient"}</h1>
+                <h1 className="text-2xl font-bold">{isEditing ? `Editing: ${ ingredient?.name }` : "Add Ingredient"}</h1>
             </div>
 
             {hasErrors && form.formState.submitCount > 0 && (
