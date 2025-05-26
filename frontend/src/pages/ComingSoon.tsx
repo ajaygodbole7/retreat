@@ -89,7 +89,7 @@ export function ComingSoon() {
                             </CardContent>
 
                             <CardFooter className="px-0 pt-4">
-                                <Button variant="outline" className="flex items-center gap-2" onClick={() => navigate(-1)}>
+                                <Button variant="outline" className="flex items-center gap-2" onClick={() => window.history.back()}>
                                     <ArrowLeft className="h-4 w-4" />
                                     Go Back
                                 </Button>

@@ -19,6 +19,7 @@ import { useQuery } from "@tanstack/react-query"
 import { ingredientService } from "../../services/ingredient-service"
 import { unitService } from "../../services/unit-service"
 import { Loader2, Plus, Trash2, ArrowUp, ArrowDown, Search } from "lucide-react"
+import type { CreateRecipeIngredientInput } from "@server/types/recipe-types"
 
 // Define the form schema using zod
 const ingredientFormSchema = z.object({
@@ -144,9 +145,15 @@ export function IntegratedIngredientsEditor({
         } else {
             // Create new ingredient
             const newIngredient = {
-                ...values,
                 recipeId,
                 displayOrder: recipeIngredients.length + 1,
+                ingredientId: values.ingredientId!, // Ensure required field
+                unitId: values.unitId!,             // Ensure required field  
+                quantity: values.quantity!,         // Ensure required field
+                preparation: values.preparation ?? null,
+                isOptional: values.isOptional ?? false,
+                notes: values.notes ?? null,
+                scalingFactor: values.scalingFactor ?? 1.0,
             }
 
             createIngredientMutation.mutate(newIngredient, {

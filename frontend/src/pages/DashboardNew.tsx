@@ -306,7 +306,7 @@ export function Dashboard() {
                                                         </Avatar>
                                                         <div>
                                                             <p className="text-sm font-medium leading-none">{recipe.name}</p>
-                                                            <p className="text-sm text-muted-foreground">{recipe.servings || 0} servings</p>
+                                                            <p className="text-sm text-muted-foreground">{recipe.servingSize || 0} servings</p>
                                                         </div>
                                                     </div>
                                                     <Link to={`/recipes/${ recipe.id }`}>
@@ -362,14 +362,12 @@ export function Dashboard() {
                                                         {formatDate(event.eventStartDate)} - {formatDate(event.eventEndDate)}
                                                     </p>
                                                 </div>
-                                                {event.attendees && (
-                                                    <div className="flex items-center gap-2">
-                                                        <Users className="h-4 w-4 text-muted-foreground" />
-                                                        <p className="text-xs text-muted-foreground">
-                                                            {typeof event.attendees === "number" ? event.attendees : "N/A"} attendees
-                                                        </p>
-                                                    </div>
-                                                )}
+                                                <div className="flex items-center gap-2">
+                                                    <Users className="h-4 w-4 text-muted-foreground" />
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {event.defaultAttendeeCount + event.defaultVolunteerCount} people ({event.defaultAttendeeCount} attendees, {event.defaultVolunteerCount} volunteers)
+                                                    </p>
+                                                </div>
                                             </div>
                                             <div className="flex space-x-2">
                                                 <Link to={`/events/${ event.id }/shopping-list`}>

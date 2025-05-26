@@ -1,9 +1,10 @@
 // src/components/ui/Navbar.tsx
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
-    UtensilsCrossed, Home, Package, CookingPot, Calendar, LogIn, LogOut, User, Loader2, Settings // Added Settings for example
+    UtensilsCrossed, Home, Package, CookingPot, Calendar, LogIn, LogOut, User, Loader2,
 } from 'lucide-react';
-import blossomLogo from '@/assets/blossom-logo.png'; // Adjust path if needed
+//import blossomLogo from '@/assets/blossom-logo.png'; // Adjust path if needed
+const blossomLogo = new URL('../../assets/blossom-logo.png', import.meta.url).href;
 import { useAuth } from '@/contexts/auth-context'; // Ensure path is correct
 import { Button } from './button'; // Use the Button component
 

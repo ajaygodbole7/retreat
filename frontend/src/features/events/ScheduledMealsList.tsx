@@ -116,8 +116,7 @@ export function ScheduledMealsList({ meals = [], onEdit, onDelete }: ScheduledMe
                                         <ul className="list-disc list-inside space-y-0">
                                             {recipes.slice(0, 3).map((r, idx) => (
                                                 <li key={r.id || idx} className="text-xs">
-                                                    {r.recipe?.name ?? `Recipe ID ${ r.recipeId }`}
-                                                    {r.notes && <span className="text-muted-foreground italic text-[11px]"> ({r.notes})</span>}
+                                                    {r.recipe?.name ?? `Recipe ID ${ r.recipeId }`}                                                
                                                 </li>
                                             ))}
                                             {recipes.length > 3 && <li className="text-xs text-muted-foreground italic">...and {recipes.length - 3} more</li>}

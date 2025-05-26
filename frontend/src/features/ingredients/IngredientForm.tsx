@@ -28,8 +28,11 @@ import { useIngredient, useCreateIngredient, useUpdateIngredient } from "../../h
 import { useCategoryList, useSubcategories } from "../../hooks/useCategories"
 import { useQuery } from "@tanstack/react-query"
 import { unitService } from "../../services/unit-service"
+import { StorageType } from "@server/types/ingredient-types"
+import type { CreateIngredientInput, UpdateIngredientInput } from "@server/types/ingredient-types"
 
 // Define the form schema using zod
+// Replace the formSchema with this corrected version:
 const formSchema = z.object({
     name: z.string().min(1, "Name is required"),
     description: z.string().optional(),
@@ -37,9 +40,7 @@ const formSchema = z.object({
     subcategoryId: z.number().int().positive("Subcategory is required").optional().nullable(),
     defaultUnitId: z.number().int().positive("Default unit is required"),
     isPerishable: z.boolean().default(false),
-    storageType: z
-        .enum(["ROOM_TEMPERATURE", "REFRIGERATED", "FROZEN", "DRY_STORAGE", "COOL_DARK"])
-        .default("ROOM_TEMPERATURE"),
+    storageType: z.nativeEnum(StorageType).default("ROOM_TEMPERATURE" as StorageType),
     shelfLifeDays: z.number().int().positive().optional().nullable(),
     storageInstructions: z.string().optional().nullable(),
     supplierInstructions: z.string().optional().nullable(),
@@ -138,7 +139,7 @@ export function IngredientForm() {
             subcategoryId: null, // Use null instead of undefined for optional IDs
             defaultUnitId: undefined,
             isPerishable: false,
-            storageType: "ROOM_TEMPERATURE",
+            storageType: "ROOM_TEMPERATURE" as StorageType,
             shelfLifeDays: null, // Use null for optional numeric fields
             storageInstructions: "",
             supplierInstructions: "",
@@ -280,11 +281,20 @@ export function IngredientForm() {
     const updateMutation = useUpdateIngredient()
 
     const onSubmit = (values: FormValues) => {
+        // Ensure required fields are present and convert to proper input types
+        const submitData = {
+            ...values,
+            name: values.name!,                    // Required field
+            categoryId: values.categoryId!,        // Required field  
+            defaultUnitId: values.defaultUnitId!,  // Required field
+            storageType: values.storageType as StorageType, // Ensure proper enum type
+        }
+    
         if (isEditing && numericIngredientId) {
             updateMutation.mutate(
                 {
                     id: numericIngredientId,
-                    data: values,
+                    data: submitData as UpdateIngredientInput,
                 },
                 {
                     onSuccess: () => {
@@ -293,7 +303,7 @@ export function IngredientForm() {
                 },
             )
         } else {
-            createMutation.mutate(values, {
+            createMutation.mutate(submitData as CreateIngredientInput, {
                 onSuccess: () => {
                     navigate({ to: "/ingredients" })
                 },

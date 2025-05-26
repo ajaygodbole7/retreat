@@ -14,6 +14,7 @@ import { useRegister } from '@/hooks/useAuth';
 import { toast } from "sonner";
 import { Loader2 } from 'lucide-react';
 import { isAxiosError } from 'axios'; // Import Axios type guard
+import { RegisterInput } from '@server/types/auth-types';
 
 // Schema and Type remain the same
 const registerSchema = z.object({ /* ... */
@@ -44,7 +45,7 @@ export function RegisterPage() {
 
     const onSubmit = async (values: RegisterFormValues) => {
         // Removed console.log
-        registerMutation.mutate(values, {
+        registerMutation.mutate(values as RegisterInput, {
             onSuccess: (data) => {
                 toast.success(data.message || "Registration successful! Please check your email.");
                 navigate({ to: '/login' });

@@ -1,9 +1,15 @@
 // src/hooks/useAuth.ts
-import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from "@tanstack/react-query";
 import { authApi } from "../lib/api"; // Use our API client definitions
 import { useToast } from "./use-toast";
 import type { LoginInput, RegisterInput, User, AuthResponse } from '@server/types/auth-types'; // Use backend types
 import { useEffect } from "react";
+
+// --- Enhanced Options Type (THIS IS THE KEY FIX) ---
+// Allow all React Query options, not just { enabled?: boolean }
+interface UseCurrentUserOptions extends Omit<UseQueryOptions<User, Error>, 'queryKey' | 'queryFn'> {
+    enabled?: boolean;
+}
 
 // --- Query Hook ---
 
@@ -13,7 +19,7 @@ import { useEffect } from "react";
  * The query key 'currentUser' allows easy invalidation/refetching.
  * @param options - Optional configuration for the query (e.g., enabled).
  */
-export function useCurrentUser(options?: { enabled?: boolean }) {
+export function useCurrentUser(options: UseCurrentUserOptions = {}) {
     const queryInfo = useQuery<User, Error>({
         queryKey: ["currentUser"], // Unique identifier for this data in the cache
         queryFn: authApi.getCurrentUser, // The function that performs the API call
@@ -23,6 +29,8 @@ export function useCurrentUser(options?: { enabled?: boolean }) {
         enabled: options?.enabled ?? true, // Control whether the query runs automatically
         // If this query fails (e.g., 401 Unauthorized), `error` will be populated,
         // and `data` will likely be undefined. The AuthContext uses this.
+        // ADD this line to spread all passed options
+        ...options,
     });
 
     // Add specific log for status changes

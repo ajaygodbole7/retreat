@@ -1,5 +1,4 @@
 // src/features/events/EventDayForm.tsx
-
 "use client"
 
 import { useEffect } from "react"
@@ -29,36 +28,23 @@ import { formatEnum } from "../../utils/format-utils"
 // Improved Zod Schema with better type handling
 const eventDaySchema = z.object({
     date: z.date({ required_error: "Date is required" }),
-    dayNumber: z.preprocess(
-        (val) => {
-            // Handle empty string, null, or undefined
-            if (val === "" || val === null || val === undefined) return undefined;
-            // Convert to number
-            const num = Number(val);
-            // Check if it's valid number
-            return isNaN(num) ? undefined : num;
-        },
-        z.number().int().nonnegative({ message: "Day number must be non-negative" })
-    ),
+    dayNumber: z.coerce
+        .number({ invalid_type_error: "Day number must be a valid number" })
+        .int({ message: "Day number must be a whole number" })
+        .nonnegative({ message: "Day number must be 0 or greater" }),
     phase: z.nativeEnum(EventPhase, {
         required_error: "Phase is required"
     }).default(EventPhase.MAIN_RETREAT),
-    attendeeHeadcountForDay: z.preprocess(
-        (val) => {
-            if (val === "" || val === null || val === undefined) return 0;
-            const num = Number(val);
-            return isNaN(num) ? 0 : num;
-        },
-        z.number().int().nonnegative().default(0),
-    ),
-    volunteerHeadcountForDay: z.preprocess(
-        (val) => {
-            if (val === "" || val === null || val === undefined) return 0;
-            const num = Number(val);
-            return isNaN(num) ? 0 : num;
-        },
-        z.number().int().nonnegative().default(0),
-    ),
+    attendeeHeadcountForDay: z.coerce
+        .number({ invalid_type_error: "Attendee count must be a valid number" })
+        .int({ message: "Attendee count must be a whole number" })
+        .nonnegative({ message: "Attendee count cannot be negative" })
+        .default(0),
+    volunteerHeadcountForDay: z.coerce
+        .number({ invalid_type_error: "Volunteer count must be a valid number" })
+        .int({ message: "Volunteer count must be a whole number" })
+        .nonnegative({ message: "Volunteer count cannot be negative" })
+        .default(0),
     notes: z.string().optional().nullable().default(""),
 })
 

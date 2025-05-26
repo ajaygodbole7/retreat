@@ -19,6 +19,7 @@ import { CourseType, CookingMethod } from "@server/types/recipe-types"
 import { formatCourseType, formatCookingMethod } from "../../utils/format-utils"
 import { IntegratedIngredientsEditor } from "./IntegratedIngredientsEditor"
 import { IntegratedStepsEditor } from "./IntegratedStepsEditor"
+import type { CreateRecipeInput, UpdateRecipeInput } from "@server/types/recipe-types"
 
 // Define the form schema using zod
 const formSchema = z.object({
@@ -141,21 +142,29 @@ export function IntegratedRecipeForm() {
         if (formErrors || ingredientsErrors || stepsErrors) {
             return
         }
-
+    
         setIsSaving(true)
         setSaveStep("Saving recipe details...")
-
+    
         try {
+            // Ensure required fields are present
+            const submitData = {
+                ...values,
+                name: values.name!,              // Required field
+                servingSize: values.servingSize!, // Required field
+                courseType: values.courseType!,   // Required field
+            }
+    
             if (isEditing && numericRecipeId) {
                 await updateMutation.mutateAsync({
                     id: numericRecipeId,
-                    data: values,
+                    data: submitData as UpdateRecipeInput,
                 })
-
+    
                 setSaveStep("Recipe updated successfully!")
                 navigate({ to: `/recipes/${numericRecipeId}` })
             } else {
-                const newRecipe = await createMutation.mutateAsync(values)
+                const newRecipe = await createMutation.mutateAsync(submitData as CreateRecipeInput)
                 setSaveStep("Recipe created successfully!")
                 navigate({ to: `/recipes/${newRecipe.id}` })
             }

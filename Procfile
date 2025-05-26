@@ -1,0 +1,1 @@
+web: pm2-runtime start server/ecosystem.config.js --env production

@@ -28,14 +28,8 @@ const formSchema = z
         eventStartDate: z.date({ required_error: "Start date is required" }),
         eventEndDate: z.date({ required_error: "End date is required" }),
         location: z.string().optional().nullable(),
-        defaultAttendeeCount: z.preprocess(
-            (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)),
-            z.number().int().nonnegative("Must be 0 or positive").optional().default(0),
-        ),
-        defaultVolunteerCount: z.preprocess(
-            (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)),
-            z.number().int().nonnegative("Must be 0 or positive").optional().default(0),
-        ),
+        defaultAttendeeCount: z.coerce.number().int().nonnegative("Must be 0 or positive").default(0),
+        defaultVolunteerCount: z.coerce.number().int().nonnegative("Must be 0 or positive").default(0),
         status: z.nativeEnum(EventStatus, { required_error: "Status is required" }),
     })
     .refine(
@@ -133,11 +127,19 @@ export function EventForm() {
         if (isEditing && eventId) {
             updateMutation.mutate(
                 { eventId, data: values as UpdateEventInput },
-                { onSuccess: () => navigate({ to: "/events/$eventId", params: { eventId: eventId.toString() } }) },
+                { 
+                    onSuccess: () => {
+                        // FIX: Use string template for navigation
+                        navigate({ to: `/events/${eventId}` })
+                    }
+                },
             )
         } else {
             createMutation.mutate(values as CreateEventInput, {
-                onSuccess: (newEvent) => navigate({ to: "/events/$eventId", params: { eventId: newEvent.id.toString() } }),
+                onSuccess: (newEvent) => {
+                    // FIX: Use string template for navigation
+                    navigate({ to: `/events/${newEvent.id}` })
+                }
             })
         }
     }
@@ -165,7 +167,7 @@ export function EventForm() {
     }
 
     // --- Back Navigation Path ---
-    const backPath = isEditing && eventId ? `/events/${ eventId }` : "/events"
+    const backPath = isEditing && eventId ? `/events/${eventId}` : "/events"
 
     // --- TSX ---
     return (

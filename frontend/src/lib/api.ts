@@ -1,5 +1,5 @@
 // frontend/src/lib/api.ts
-import axios from 'axios';
+import axios, { AxiosError, AxiosResponse } from 'axios';
 import type {
     RecipeFilters,
     CreateRecipeInput,
@@ -8,7 +8,7 @@ import type {
     UpdateRecipeStepInput,
     CreateRecipeIngredientInput,
     UpdateRecipeIngredientInput,
-} from "@server/types/recipe-types"
+} from "@server/types/recipe-types";
 
 import type {
     Event,
@@ -34,73 +34,169 @@ import type {
     ShoppingListWithItems,
     AggregatedShoppingItem,
     GroupedShoppingList
-} from "@server/types/shopping-list-types"
+} from "@server/types/shopping-list-types";
 
 import type {
-    LoginInput, RegisterInput, User, AuthResponse
+    LoginInput,
+    RegisterInput,
+    User,
+    AuthResponse
 } from '@server/types/auth-types';
 
-// Create axios instance with base URL and default headers
+// --- Centralized Error Types ---
+export interface ApiErrorData {
+    message?: string;
+    errors?: Record<string, string[]>;
+    code?: string;
+    details?: any;
+}
+
+export interface ApiError extends Error {
+    response?: {
+        status: number;
+        data?: ApiErrorData;
+        statusText?: string;
+    };
+    request?: any;
+    code?: string;
+    config?: any;
+}
+
+// Type guard for API errors
+export const isApiError = (error: any): error is ApiError => {
+    return error && (error.response || error.request);
+};
+
+// Helper to extract meaningful error message
+export const getErrorMessage = (error: ApiError | Error): string => {
+    if (isApiError(error)) {
+        return error.response?.data?.message ||
+            error.response?.statusText ||
+            error.message ||
+            'An unexpected error occurred';
+    }
+    return error.message || 'An unexpected error occurred';
+};
+
+// Helper to check if error is authentication related
+export const isAuthError = (error: ApiError | Error): boolean => {
+    if (isApiError(error)) {
+        return error.response?.status === 401 || error.response?.status === 403;
+    }
+    return false;
+};
+
+// --- API Client Setup ---
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001/api',
     headers: {
         'Content-Type': 'application/json'
     },
-    withCredentials: true
+    withCredentials: true,
+    timeout: 10000, // 10 second timeout
 });
 
-// --- Axios Request Interceptor ---
-// Automatically attach the auth token from localStorage to outgoing requests
+// --- Request Interceptor ---
 api.interceptors.request.use(
     (config) => {
-        // Retrieve the token from localStorage
-        const token = localStorage.getItem('authToken');
-        // If a token exists and the request has headers, add the Authorization header
-        if (token && config.headers) {
-            config.headers['Authorization'] = `Bearer ${ token }`;
-            // Optional: Log that the token is being added (useful for debugging)
-            console.log('API Interceptor: Added Auth Token to request for URL:', config.url);
-        }
-        return config
-    },
-    (error) => {
-        return Promise.reject(error)
-    },
-)
-
-
-// Add request interceptor for error handling
-api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        // Handle errors globally
-        if (error.response) {
-            // Server responded with a status code outside of 2xx range
-            console.error('API Error Response:', {
-                status: error.response.status,
-                data: error.response.data,
-                url: error.config.url,
-                method: error.config.method,
-            });
-            if (error.response.status === 401) {
-                // Potential global action: You could trigger a logout here if needed,
-                // but usually it's better handled by the component/hook that made the call.
-                console.warn('Unauthorized (401) response detected. Token might be invalid/expired.');
-                // --- Dispatch custom event for global handling ---
-                // This allows AuthContext (or other listeners) to react without direct coupling.
-                window.dispatchEvent(new CustomEvent('auth-unauthorized', { detail: { error } }));
-                // --- End Event Dispatch ---
+        try {
+            const token = localStorage.getItem('authToken');
+            if (token && config.headers) {
+                config.headers['Authorization'] = `Bearer ${ token }`;
+                console.log('API Interceptor: Added Auth Token to request for URL:', config.url);
             }
-
-        } else if (error.request) {
-            // Request was made but no response was received
-            console.error('API Network Error:', error.message, 'URL:', error.config?.url);
-            // Something else happened while setting up the request
-            console.error('Error:', error.message);
+        } catch (error) {
+            console.warn('API Interceptor: Failed to read auth token from localStorage:', error);
         }
+        return config;
+    },
+    (error) => {
+        console.error('API Interceptor: Request error:', error);
         return Promise.reject(error);
     }
 );
+
+// --- Response Interceptor ---
+api.interceptors.response.use(
+    (response: AxiosResponse) => {
+        // Log successful responses in development
+        if (import.meta.env.DEV) {
+            console.log('API Success:', {
+                method: response.config.method?.toUpperCase(),
+                url: response.config.url,
+                status: response.status,
+            });
+        }
+        return response;
+    },
+    (error: AxiosError<ApiErrorData>) => {
+        // Create structured error object
+        const apiError: ApiError = {
+            name: error.name,
+            message: error.message,
+            response: error.response ? {
+                status: error.response.status,
+                data: error.response.data,
+                statusText: error.response.statusText,
+            } : undefined,
+            request: error.request,
+            code: error.code,
+            config: error.config,
+        };
+
+        // Log error details
+        console.error('API Error:', {
+            status: apiError.response?.status,
+            url: error.config?.url,
+            method: error.config?.method?.toUpperCase(),
+            message: getErrorMessage(apiError),
+            data: apiError.response?.data,
+        });
+
+        // Handle specific error types
+        if (apiError.response?.status === 401) {
+            console.warn('API: Unauthorized (401) - Token might be invalid/expired');
+
+            // Dispatch global auth error event
+            window.dispatchEvent(new CustomEvent('auth-unauthorized', {
+                detail: {
+                    error: apiError,
+                    url: error.config?.url,
+                    method: error.config?.method
+                }
+            }));
+        } else if (apiError.response?.status === 403) {
+            console.warn('API: Forbidden (403) - Insufficient permissions');
+
+            window.dispatchEvent(new CustomEvent('auth-forbidden', {
+                detail: {
+                    error: apiError,
+                    url: error.config?.url,
+                    method: error.config?.method
+                }
+            }));
+        } else if (apiError.response?.status === 422) {
+            console.warn('API: Validation Error (422):', apiError.response.data?.errors);
+        } else if (apiError.response?.status >= 500) {
+            console.error('API: Server Error (5xx)');
+
+            // Dispatch server error event for global error handling
+            window.dispatchEvent(new CustomEvent('api-server-error', {
+                detail: { error: apiError }
+            }));
+        } else if (!apiError.response) {
+            console.error('API: Network Error - No response received');
+
+            window.dispatchEvent(new CustomEvent('api-network-error', {
+                detail: { error: apiError }
+            }));
+        }
+
+        return Promise.reject(apiError);
+    }
+);
+
+// --- API Functions with Better Error Handling ---
 
 // Ingredient API
 export const ingredientApi = {
@@ -108,23 +204,19 @@ export const ingredientApi = {
         const response = await api.get('/ingredients', { params: filters });
         return response.data;
     },
-
-    getById: async (id) => {
+    getById: async (id: string | number) => {
         const response = await api.get(`/ingredients/${ id }`);
         return response.data;
     },
-
-    create: async (data) => {
+    create: async (data: any) => {
         const response = await api.post('/ingredients', data);
         return response.data;
     },
-
-    update: async (id, data) => {
+    update: async (id: string | number, data: any) => {
         const response = await api.put(`/ingredients/${ id }`, data);
         return response.data;
     },
-
-    delete: async (id) => {
+    delete: async (id: string | number) => {
         await api.delete(`/ingredients/${ id }`);
         return true;
     }
@@ -136,178 +228,146 @@ export const categoryApi = {
         const response = await api.get('/categories');
         return response.data;
     },
-
-    getById: async (id) => {
+    getById: async (id: string | number) => {
         const response = await api.get(`/categories/${ id }`);
         return response.data;
     },
-
-    create: async (data) => {
+    create: async (data: any) => {
         const response = await api.post('/categories', data);
         return response.data;
     },
-
-    update: async (id, data) => {
+    update: async (id: string | number, data: any) => {
         const response = await api.put(`/categories/${ id }`, data);
         return response.data;
     },
-
-    delete: async (id) => {
+    delete: async (id: string | number) => {
         await api.delete(`/categories/${ id }`);
         return true;
     },
-
-    // Subcategory methods
-    getSubcategories: async (categoryId) => {
+    getSubcategories: async (categoryId: string | number) => {
         if (!categoryId) return [];
         const response = await api.get(`/categories/${ categoryId }/subcategories`);
         return response.data;
     },
-
-    getSubcategoryById: async (id) => {
+    getSubcategoryById: async (id: string | number) => {
         const response = await api.get(`/categories/subcategories/${ id }`);
         return response.data;
     },
-
-    createSubcategory: async (categoryId, data) => {
+    createSubcategory: async (categoryId: string | number, data: any) => {
         const response = await api.post(`/categories/${ categoryId }/subcategories`, data);
         return response.data;
     },
-
-    updateSubcategory: async (id, data) => {
+    updateSubcategory: async (id: string | number, data: any) => {
         const response = await api.put(`/categories/subcategories/${ id }`, data);
         return response.data;
     },
-
-    deleteSubcategory: async (id) => {
+    deleteSubcategory: async (id: string | number) => {
         await api.delete(`/categories/subcategories/${ id }`);
         return true;
     }
 };
 
-// Unit of Measure API
+// Unit of Measure API  
 export const unitApi = {
     getAll: async () => {
         const response = await api.get('/units');
         return response.data;
     },
-
-    getById: async (id) => {
+    getById: async (id: string | number) => {
         const response = await api.get(`/units/${ id }`);
         return response.data;
     },
-
-    create: async (data) => {
+    create: async (data: any) => {
         const response = await api.post('/units', data);
         return response.data;
     },
-
-    update: async (id, data) => {
+    update: async (id: string | number, data: any) => {
         const response = await api.put(`/units/${ id }`, data);
         return response.data;
     },
-
-    delete: async (id) => {
+    delete: async (id: string | number) => {
         await api.delete(`/units/${ id }`);
         return true;
     },
-
-    convert: async (conversionData) => {
+    convert: async (conversionData: any) => {
         const response = await api.post('/units/convert', conversionData);
         return response.data;
     }
 };
 
-// Recipe API
+// Recipe API with proper typing
 export const recipeApi = {
-    // Recipe methods
     getAll: async (filters: RecipeFilters = {}) => {
-        console.log("API - getAll recipes with filters:", filters)
-        const response = await api.get("/recipes", { params: filters })
-        console.log("API - getAll response:", response.data)
-        return response.data
+        console.log("API - getAll recipes with filters:", filters);
+        const response = await api.get("/recipes", { params: filters });
+        console.log("API - getAll response:", response.data);
+        return response.data;
     },
-
     getById: async (id: number) => {
-        console.log("API - getById called with:", id)
+        console.log("API - getById called with:", id);
         if (!id || isNaN(id)) {
-            console.error("API - Invalid recipe ID:", id)
-            throw new Error("Invalid recipe ID")
+            console.error("API - Invalid recipe ID:", id);
+            throw new Error("Invalid recipe ID");
         }
-        const response = await api.get(`/recipes/${ id }`)
-        console.log("API - getById response:", response.data)
-        return response.data
+        const response = await api.get(`/recipes/${ id }`);
+        console.log("API - getById response:", response.data);
+        return response.data;
     },
-
     create: async (data: CreateRecipeInput) => {
-        const response = await api.post("/recipes", data)
-        return response.data
+        const response = await api.post("/recipes", data);
+        return response.data;
     },
-
     update: async (id: number, data: UpdateRecipeInput) => {
-        const response = await api.put(`/recipes/${ id }`, data)
-        return response.data
+        const response = await api.put(`/recipes/${ id }`, data);
+        return response.data;
     },
-
     delete: async (id: number) => {
-        await api.delete(`/recipes/${ id }`)
-        return true
+        await api.delete(`/recipes/${ id }`);
+        return true;
     },
-
-    // Recipe Step methods
     getSteps: async (recipeId: number) => {
-        const response = await api.get(`/recipes/${ recipeId }/steps`)
-        return response.data
+        const response = await api.get(`/recipes/${ recipeId }/steps`);
+        return response.data;
     },
-
     getStepById: async (id: number) => {
-        const response = await api.get(`/recipes/steps/${ id }`)
-        return response.data
+        const response = await api.get(`/recipes/steps/${ id }`);
+        return response.data;
     },
-
     createStep: async (data: CreateRecipeStepInput) => {
-        const response = await api.post("/recipes/steps", data)
-        return response.data
+        const response = await api.post("/recipes/steps", data);
+        return response.data;
     },
-
     updateStep: async (id: number, data: UpdateRecipeStepInput) => {
-        const response = await api.put(`/recipes/steps/${ id }`, data)
-        return response.data
+        const response = await api.put(`/recipes/steps/${ id }`, data);
+        return response.data;
     },
-
     deleteStep: async (id: number) => {
-        await api.delete(`/recipes/steps/${ id }`)
-        return true
+        await api.delete(`/recipes/steps/${ id }`);
+        return true;
     },
-
-    // Recipe Ingredient methods
     getIngredients: async (recipeId: number) => {
-        const response = await api.get(`/recipes/${ recipeId }/ingredients`)
-        return response.data
+        const response = await api.get(`/recipes/${ recipeId }/ingredients`);
+        return response.data;
     },
-
     getIngredientById: async (id: number) => {
-        const response = await api.get(`/recipes/ingredients/${ id }`)
-        return response.data
+        const response = await api.get(`/recipes/ingredients/${ id }`);
+        return response.data;
     },
-
     createIngredient: async (data: CreateRecipeIngredientInput) => {
-        const response = await api.post("/recipes/ingredients", data)
-        return response.data
+        const response = await api.post("/recipes/ingredients", data);
+        return response.data;
     },
-
     updateIngredient: async (id: number, data: UpdateRecipeIngredientInput) => {
-        const response = await api.put(`/recipes/ingredients/${ id }`, data)
-        return response.data
+        const response = await api.put(`/recipes/ingredients/${ id }`, data);
+        return response.data;
     },
-
     deleteIngredient: async (id: number) => {
-        await api.delete(`/recipes/ingredients/${ id }`)
-        return true
+        await api.delete(`/recipes/ingredients/${ id }`);
+        return true;
     },
-}
+};
 
-// --- Event API ---
+// Event API
 export const eventApi = {
     getAll: async (): Promise<Event[]> => {
         const response = await api.get('/events');
@@ -317,11 +377,11 @@ export const eventApi = {
         const response = await api.get(`/events/${ eventId }`);
         return response.data;
     },
-    create: async (data: CreateEventInput): Promise<Event> => { // Param uses backend type
+    create: async (data: CreateEventInput): Promise<Event> => {
         const response = await api.post('/events', data);
         return response.data;
     },
-    update: async (eventId: number, data: UpdateEventInput): Promise<Event> => { // Param uses backend type
+    update: async (eventId: number, data: UpdateEventInput): Promise<Event> => {
         const response = await api.put(`/events/${ eventId }`, data);
         return response.data;
     },
@@ -329,12 +389,11 @@ export const eventApi = {
         await api.delete(`/events/${ eventId }`);
         return true;
     },
-    // EventDay methods
-    addDay: async (eventId: number, data: CreateEventDayInput): Promise<EventDay> => { // Param uses backend type
+    addDay: async (eventId: number, data: CreateEventDayInput): Promise<EventDay> => {
         const response = await api.post(`/events/${ eventId }/days`, data);
         return response.data;
     },
-    updateDay: async (dayId: number, data: UpdateEventDayInput): Promise<EventDay> => { // Param uses backend type
+    updateDay: async (dayId: number, data: UpdateEventDayInput): Promise<EventDay> => {
         const response = await api.put(`/events/days/${ dayId }`, data);
         return response.data;
     },
@@ -342,12 +401,11 @@ export const eventApi = {
         await api.delete(`/events/days/${ dayId }`);
         return true;
     },
-    // EventDayConsumable methods
-    addConsumable: async (dayId: number, data: EventDayConsumableInput): Promise<EventDayConsumable> => { // Param uses backend type
+    addConsumable: async (dayId: number, data: EventDayConsumableInput): Promise<EventDayConsumable> => {
         const response = await api.post(`/events/days/${ dayId }/consumables`, data);
         return response.data;
     },
-    updateConsumable: async (consumableId: number, data: UpdateEventDayConsumableInput): Promise<EventDayConsumable> => { // Param uses backend type
+    updateConsumable: async (consumableId: number, data: UpdateEventDayConsumableInput): Promise<EventDayConsumable> => {
         const response = await api.put(`/events/consumables/${ consumableId }`, data);
         return response.data;
     },
@@ -357,98 +415,78 @@ export const eventApi = {
     },
 };
 
-// --- Menu API (Based on Test Script Needs) ---
+// Menu API
 export const menuApi = {
-    // Get all menus (simplified for dropdown, adjust based on actual API)
     getAllSimple: async (): Promise<Pick<Menu, 'id' | 'name' | 'mealType'>[]> => {
-        // Use query param or separate endpoint if available for optimization
         const response = await api.get('/menus');
-        // If the full menu is returned, map it here, otherwise adjust endpoint
         return response.data.map((m: Menu) => ({ id: m.id, name: m.name, mealType: m.mealType }));
     },
-    // Create Menu (needed for test script)
     create: async (data: { name: string; description?: string; mealType?: string }): Promise<Menu> => {
         const response = await api.post('/menus', data);
         return response.data;
     },
-    // Get Menu By ID (needed for test script)
     getById: async (menuId: number): Promise<Menu> => {
         const response = await api.get(`/menus/${ menuId }`);
-        return response.data; // Assuming it includes menuItems relation
+        return response.data;
     },
-    // Delete Menu (needed for test script cleanup)
     delete: async (menuId: number): Promise<boolean> => {
         await api.delete(`/menus/${ menuId }`);
         return true;
     },
-    // Add Recipe to Menu (needed for test script)
-    addRecipeToMenu: async (menuId: number, data: { recipeId: number; displayOrder?: number }): Promise<any> => {
+    addRecipeToMenu: async (menuId: number, data: { recipeId: number; displayOrder?: number }) => {
         const response = await api.post(`/menus/${ menuId }/recipes`, data);
-        return response.data; // Return type depends on backend
+        return response.data;
     },
-    // Remove Recipe from Menu (needed for test script)
     removeRecipeFromMenu: async (menuId: number, recipeId: number): Promise<boolean> => {
         await api.delete(`/menus/${ menuId }/recipes/${ recipeId }`);
         return true;
     },
-    // Add other menu methods (update) if needed
 };
 
-// --- Scheduled Meal API (Based on Test Script Needs) ---
+// Scheduled Meal API
 export const scheduledMealApi = {
-    // Create a new scheduled meal for a specific day
     create: async (dayId: number, data: CreateScheduledMealInput): Promise<ScheduledMeal> => {
         const response = await api.post(`/events/days/${ dayId }/meals`, data);
         return response.data;
     },
-    // Update an existing scheduled meal
     update: async (mealId: number, data: UpdateScheduledMealInput): Promise<ScheduledMeal> => {
         const response = await api.put(`/scheduled-meals/${ mealId }`, data);
         return response.data;
     },
-    // Delete a scheduled meal
     delete: async (mealId: number): Promise<boolean> => {
         await api.delete(`/scheduled-meals/${ mealId }`);
         return true;
     },
-    // Add Recipe directly to Scheduled Meal (needed for test script)
-    addRecipeToMeal: async (mealId: number, data: { recipeId: number }): Promise<any> => {
+    addRecipeToMeal: async (mealId: number, data: { recipeId: number }) => {
         const response = await api.post(`/scheduled-meals/${ mealId }/recipes`, data);
-        return response.data; // Type depends on backend response
+        return response.data;
     },
-    // Remove Recipe directly from Scheduled Meal (needed for test script)
     removeRecipeFromMeal: async (mealId: number, recipeId: number): Promise<boolean> => {
         await api.delete(`/scheduled-meals/${ mealId }/recipes/${ recipeId }`);
         return true;
     },
-    // Get meals for a day (if not included in event details)
-    // We assume event details includes meals for now,
-    // Get meals for a day
-    getAllForDay: async (dayId: number): Promise<any[]> => {
-        console.log(`API: Fetching meals for day ${ dayId }`)
+    getAllForDay: async (dayId: number) => {
+        console.log(`API: Fetching meals for day ${ dayId }`);
         try {
-            // This should match the endpoint in the test script: /events/days/${dayId}/meals
-            const response = await api.get(`/events/days/${ dayId }/meals`)
-            console.log(`API Response for day ${ dayId } meals:`, response.data)
-            return response.data || []
+            const response = await api.get(`/events/days/${ dayId }/meals`);
+            console.log(`API Response for day ${ dayId } meals:`, response.data);
+            return response.data || [];
         } catch (error) {
-            console.error(`API Error fetching meals for day ${ dayId }:`, error)
-            throw error
+            console.error(`API Error fetching meals for day ${ dayId }:`, error);
+            throw error;
         }
     },
 };
 
-// --- Shopping List API ---
+// Shopping List API
 export const shoppingListApi = {
-    // Get a stored shopping list for an event
     getEventShoppingList: async (eventId: number): Promise<ShoppingListWithItems | null> => {
         try {
             console.log(`API: Fetching shopping list for event ${ eventId }`);
             const response = await api.get(`/events/${ eventId }/shopping-list`);
             return response.data;
         } catch (error) {
-            // Handle 404 (no list yet) differently than other errors
-            if (axios.isAxiosError(error) && error.response?.status === 404) {
+            if (isApiError(error) && error.response?.status === 404) {
                 console.log(`No shopping list found for event ${ eventId }`);
                 return null;
             }
@@ -456,29 +494,21 @@ export const shoppingListApi = {
             throw error;
         }
     },
-
-    // Generate or replace a shopping list for an event
     generateEventShoppingList: async (eventId: number): Promise<ShoppingListWithItems> => {
         console.log(`API: Generating shopping list for event ${ eventId }`);
         const response = await api.put(`/events/${ eventId }/shopping-list`);
         return response.data;
     },
-
-    // Update a shopping list item
     updateShoppingListItem: async (itemId: number, data: Partial<ShoppingListItemData>): Promise<ShoppingListItemData> => {
         console.log(`API: Updating shopping list item ${ itemId } with data:`, data);
         const response = await api.put(`/shopping-lists/items/${ itemId }`, data);
         return response.data;
     },
-
-    // Update shopping list details
     updateShoppingList: async (listId: number, data: Partial<ShoppingListData>): Promise<ShoppingListData> => {
         console.log(`API: Updating shopping list ${ listId } with data:`, data);
         const response = await api.put(`/shopping-lists/${ listId }`, data);
         return response.data;
     },
-
-    // Get consolidated shopping list
     getConsolidatedShoppingList: async (params: {
         startDate?: string;
         endDate?: string;
@@ -492,50 +522,66 @@ export const shoppingListApi = {
     }
 };
 
-// --- Authentication API Definitions ---
+// --- Authentication API with Enhanced Error Handling ---
 export const authApi = {
-    /**
-     * Sends login credentials to the backend.
-     * @param credentials - Email and password object.
-     * @returns Promise resolving to AuthResponse containing token and user data.
-     */
     login: async (credentials: LoginInput): Promise<AuthResponse> => {
-        console.log("API Client: Calling POST /auth/login");
-        const response = await api.post('/auth/login', credentials);
-        return response.data;
+        try {
+            console.log("API Client: Calling POST /auth/login");
+            const response = await api.post('/auth/login', credentials);
+            console.log("API Client: Login successful");
+            return response.data;
+        } catch (error) {
+            console.error("API Client: Login failed:", getErrorMessage(error as ApiError));
+            throw error;
+        }
     },
 
-    /**
-     * Sends registration data to the backend.
-     * @param userData - Name, email, and password object.
-     * @returns Promise resolving to an object with a success message and basic user info.
-     */
     register: async (userData: RegisterInput): Promise<{ message: string; user: User }> => {
-        console.log("API Client: Calling POST /auth/register");
-        const response = await api.post('/auth/register', userData);
-        return response.data;
+        try {
+            console.log("API Client: Calling POST /auth/register");
+            const response = await api.post('/auth/register', userData);
+            console.log("API Client: Registration successful");
+            return response.data;
+        } catch (error) {
+            console.error("API Client: Registration failed:", getErrorMessage(error as ApiError));
+            throw error;
+        }
     },
 
-    /**
-     * Fetches the current user's profile information from the backend.
-     * Relies on the interceptor to attach the Authorization header.
-     * @returns Promise resolving to the User object.
-     */
     getCurrentUser: async (): Promise<User> => {
-        console.log("API Client: Calling GET /auth/me");
-        const response = await api.get('/auth/me');
-        return response.data;
+        try {
+            console.log("API Client: Calling GET /auth/me");
+            const response = await api.get('/auth/me');
+            console.log("API Client: Successfully fetched current user");
+            return response.data;
+        } catch (error) {
+            console.error("API Client: Failed to fetch current user:", getErrorMessage(error as ApiError));
+            throw error;
+        }
     },
 
-    /**
-     * Optional: Backend logout endpoint call.
-     * If your backend invalidates tokens or sessions server-side on logout.
-     */
-    // logout: async (): Promise<void> => {
-    //     console.log("API Client: Calling POST /auth/logout");
-    //     await api.post('/auth/logout');
-    // },
-};
+    logout: async (): Promise<void> => {
+        try {
+            console.log("API Client: Calling POST /auth/logout");
+            await api.post('/auth/logout');
+            console.log("API Client: Server logout successful");
+        } catch (error) {
+            console.warn("API Client: Server logout failed:", getErrorMessage(error as ApiError));
+            // Don't throw - local logout should still proceed
+        }
+    },
 
+    refreshToken: async (): Promise<AuthResponse> => {
+        try {
+            console.log("API Client: Calling POST /auth/refresh");
+            const response = await api.post('/auth/refresh');
+            console.log("API Client: Token refresh successful");
+            return response.data;
+        } catch (error) {
+            console.error("API Client: Token refresh failed:", getErrorMessage(error as ApiError));
+            throw error;
+        }
+    },
+};
 
 export default api;

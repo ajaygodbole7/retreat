@@ -18,6 +18,7 @@ import { useLogin } from '@/hooks/useAuth';
 import { toast } from "sonner";
 import { Loader2 } from 'lucide-react';
 import { isAxiosError } from 'axios';
+import { LoginInput } from '@server/types/auth-types';
 
 // Schema and Type definitions (keep as before)
 const loginSchema = z.object({
@@ -47,7 +48,11 @@ export function LoginPage() {
     }, [isAuthenticated, isAuthLoading, navigate, redirectUrl]);
 
     const onSubmit = async (values: LoginFormValues) => {
-        loginMutation.mutate(values, {
+        const loginData: LoginInput = {
+            email: values.email || '',
+            password: values.password || ''
+        };
+        loginMutation.mutate(loginData, {
             onSuccess: (data) => {
                 updateAuthContext(data.token, data.user);
                 toast.success("Login successful! Redirecting...");

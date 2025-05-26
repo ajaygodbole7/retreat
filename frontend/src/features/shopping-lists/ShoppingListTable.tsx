@@ -12,9 +12,8 @@ import { cn } from "@/lib/utils"
 import type {
     ShoppingListWithItems,
     ShoppingListItemData,
-    ShoppingListItemStatus,
-    ShoppingListStatus,
 } from "@server/types/shopping-list-types"
+import { ShoppingListItemStatus, ShoppingListStatus } from "@server/types/shopping-list-types"
 
 interface ShoppingListTableProps {
     shoppingList: ShoppingListWithItems | null
@@ -310,32 +309,32 @@ function ShoppingListTableRow({ item, onUpdateItem, isUpdating }: ShoppingListTa
             status,
             // If marking as purchased and no purchased quantity is set, use the calculated quantity
             purchasedQuantity:
-                status === "PURCHASED" ? item.purchasedQuantity || item.calculatedQuantity : item.purchasedQuantity,
+                status === ShoppingListItemStatus.PURCHASED  ? item.purchasedQuantity || item.calculatedQuantity : item.purchasedQuantity,
         })
     }
 
     // Get status badge
     const getStatusBadge = () => {
         switch (item.status) {
-            case "PURCHASED":
+            case ShoppingListItemStatus.PURCHASED:
                 return (
                     <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-green-300">
                         <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Purchased
                     </Badge>
                 )
-            case "PARTIAL":
+            case ShoppingListItemStatus.PARTIAL:
                 return (
                     <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-300">
                         <AlertCircle className="h-3.5 w-3.5 mr-1" /> Partial
                     </Badge>
                 )
-            case "OUT_OF_STOCK":
+            case ShoppingListItemStatus.OUT_OF_STOCK:
                 return (
                     <Badge className="bg-red-100 text-red-800 hover:bg-red-200 border-red-300">
                         <XCircle className="h-3.5 w-3.5 mr-1" /> Out of Stock
                     </Badge>
                 )
-            case "NEEDED":
+            case ShoppingListItemStatus.NEEDED:
             default:
                 return (
                     <Badge variant="outline" className="bg-gray-100 hover:bg-gray-200">
@@ -374,8 +373,8 @@ function ShoppingListTableRow({ item, onUpdateItem, isUpdating }: ShoppingListTa
                         variant="ghost"
                         size="sm"
                         className="h-7 w-7 p-0"
-                        onClick={() => handleStatusChange("PURCHASED")}
-                        disabled={isUpdating || item.status === "PURCHASED"}
+                        onClick={() => handleStatusChange(ShoppingListItemStatus.PURCHASED)}
+                        disabled={isUpdating || item.status === ShoppingListItemStatus.PURCHASED}
                         title="Mark Purchased"
                     >
                         <Check className="h-4 w-4 text-green-600" />
@@ -385,8 +384,8 @@ function ShoppingListTableRow({ item, onUpdateItem, isUpdating }: ShoppingListTa
                         variant="ghost"
                         size="sm"
                         className="h-7 w-7 p-0"
-                        onClick={() => handleStatusChange("OUT_OF_STOCK")}
-                        disabled={isUpdating || item.status === "OUT_OF_STOCK"}
+                        onClick={() => handleStatusChange(ShoppingListItemStatus.OUT_OF_STOCK)}
+                        disabled={isUpdating || item.status === ShoppingListItemStatus.OUT_OF_STOCK}
                         title="Mark Out of Stock"
                     >
                         <X className="h-4 w-4 text-red-600" />

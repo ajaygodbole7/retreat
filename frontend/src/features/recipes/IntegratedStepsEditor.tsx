@@ -16,6 +16,7 @@ import {
     useDeleteRecipeStep,
 } from "../../hooks/useRecipeSteps"
 import { Loader2, Plus, Trash2, ArrowUp, ArrowDown, Clock } from "lucide-react"
+import type { CreateRecipeStepInput } from "@server/types/recipe-types"
 
 // Define the form schema using zod
 const stepFormSchema = z.object({
@@ -97,12 +98,15 @@ export function IntegratedStepsEditor({ recipeId, onErrorsChange }: IntegratedSt
         } else {
             // Create new step
             const newStep = {
-                ...values,
                 recipeId,
                 stepNumber: steps.length + 1,
+                instruction: values.instruction!,  // Ensure required field
+                estimatedTimeMinutes: values.estimatedTimeMinutes ?? null,
+                isOptional: values.isOptional ?? false,
             }
+            
 
-            createStepMutation.mutate(newStep, {
+            createStepMutation.mutate(newStep as CreateRecipeStepInput, {
                 onSuccess: () => {
                     setIsAddingStep(false)
                     form.reset()

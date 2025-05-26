@@ -144,8 +144,16 @@ export function RecipeDetail() {
     const ingredients = ensureArray(recipe.recipeIngredients)
     const steps = ensureArray(recipe.steps).sort((a, b) => a.stepNumber - b.stepNumber)
 
-    // Get scaled ingredients if available
-    const scaledIngredients = scaledRecipe?.scaledIngredients ? ensureArray(scaledRecipe.scaledIngredients) : []
+    // Calculate scaling factor
+    const scalingFactor = typeof targetServingSize === "number" && recipe.servingSize ? 
+        targetServingSize / recipe.servingSize : 1
+
+    // Get scaled ingredients if available from scaledRecipe, otherwise calculate locally
+    const scaledIngredients = scaledRecipe?.recipeIngredients || 
+        (isScaling ? ingredients.map(ingredient => ({
+            ...ingredient,
+            quantity: ingredient.quantity * scalingFactor
+        })) : [])
 
     return (
         <div className="container mx-auto py-6 print:py-2">
@@ -193,10 +201,15 @@ export function RecipeDetail() {
                             {/* Essential Badges Row */}
                             <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-xs">
                                 <Badge className="bg-primary text-primary-foreground">{getCourseTypeLabel(recipe.courseType)}</Badge>
-                                <span className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
-                                    <Users className="h-3.5 w-3.5" />
-                                    Serves {isScaling && scaledRecipe ? scaledRecipe.targetServingSize : recipe.servingSize}
-                                </span>
+                                <div className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
+                                    <Users className="h-3.5 w-3.5 flex-shrink-0" />
+                                    <span>
+                                        Serves {recipe.servingSize}
+                                        {isScaling && typeof targetServingSize === "number" && (
+                                            <span className="ml-1 font-medium">→ {targetServingSize}</span>
+                                        )}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
@@ -220,24 +233,23 @@ export function RecipeDetail() {
                                     Onion/Garlic
                                 </Badge>
                             )}
-                            {/* Recipe Description */}
-                            {recipe.description && (
-                                <div className="text-sm">
-                                    <p>{recipe.description}</p>
-                                </div>
-                            )}
-
-                            {/* Recipe Notes */}
-                            {recipe.notes && (
-                                <div className="text-sm bg-amber-50 border border-amber-100 p-2 rounded">
-                                    <p className="font-medium mb-1">Notes:</p>
-                                    <p>{recipe.notes}</p>
-                                </div>
-                            )}
                         </div>
                     </div>
 
+                    {/* Recipe Description */}
+                    {recipe.description && (
+                        <div className="text-sm">
+                            <p>{recipe.description}</p>
+                        </div>
+                    )}
 
+                    {/* Recipe Notes */}
+                    {recipe.notes && (
+                        <div className="text-sm bg-amber-50 border border-amber-100 p-2 rounded">
+                            <p className="font-medium mb-1">Notes:</p>
+                            <p>{recipe.notes}</p>
+                        </div>
+                    )}
 
                     {/* Collapsible Details Section */}
                     <div className="pt-1 border-t">
@@ -361,11 +373,7 @@ export function RecipeDetail() {
                                         </Button>
                                     )}
                                 </div>
-                                {isScaling && scaledRecipe && (
-                                    <span className="text-xs text-muted-foreground">
-                                        Scaling factor: {scaledRecipe.scalingFactor.toFixed(2)}x
-                                    </span>
-                                )}
+                                
                             </div>
                         )}
                     </div>
@@ -380,9 +388,9 @@ export function RecipeDetail() {
                         <div className="flex items-center">
                             <ListChecks className="h-4 w-4 mr-1.5 text-muted-foreground" />
                             <span className="font-semibold text-base">Ingredients</span>
-                            {isScaling && scaledRecipe && (
-                                <span className="ml-2 text-xs text-muted-foreground">
-                                    (Scaled for {scaledRecipe.targetServingSize} servings)
+                            {isScaling && typeof targetServingSize === "number" && (
+                                <span className="ml-2 text-sm text-muted-foreground">
+                                    (Scaled for {targetServingSize} servings)
                                 </span>
                             )}
                         </div>
@@ -396,8 +404,12 @@ export function RecipeDetail() {
                                         // Find the corresponding scaled ingredient if scaling is active
                                         const scaledIngredient =
                                             isScaling && scaledIngredients.length > 0
-                                                ? scaledIngredients.find((si) => si.ingredientId === ingredient.ingredientId)
+                                                ? scaledIngredients.find((si) => si.ingredientId === ingredient.ingredientId) || 
+                                                  scaledIngredients[index] // fallback to index if ingredientId match fails
                                                 : null
+
+                                        const displayQuantity = scaledIngredient ? 
+                                            scaledIngredient.quantity : ingredient.quantity
 
                                         return (
                                             <div
@@ -418,19 +430,13 @@ export function RecipeDetail() {
                                                 </dt>
                                                 <dd className="flex justify-between w-full md:w-1/2 mt-1 md:mt-0">
                                                     <span className="text-sm">
-                                                        {formatQuantity(ingredient.quantity)}{" "}
+                                                        {formatQuantity(displayQuantity)}{" "}
                                                         {ingredient.unit?.abbreviation || ingredient.unit?.name || ""}
                                                     </span>
-                                                    {isScaling && scaledRecipe && (
+                                                    {isScaling && !scaledIngredient && (
                                                         <span className="text-sm font-medium">
-                                                            {scaledIngredient ? (
-                                                                <>
-                                                                    {formatQuantity(scaledIngredient.scaledQuantity)}{" "}
-                                                                    {ingredient.unit?.abbreviation || ingredient.unit?.name || ""}
-                                                                </>
-                                                            ) : (
-                                                                "-"
-                                                            )}
+                                                            {formatQuantity(ingredient.quantity * scalingFactor)}{" "}
+                                                            {ingredient.unit?.abbreviation || ingredient.unit?.name || ""}
                                                         </span>
                                                     )}
                                                 </dd>
@@ -517,7 +523,7 @@ export function RecipeDetail() {
             </AlertDialog>
 
             {/* Print styles */}
-            <style jsx global>{`
+            <style>{`
         @media print {
           body {
             font-size: 12pt;

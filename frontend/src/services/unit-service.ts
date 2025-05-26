@@ -1,5 +1,5 @@
 import api from "../lib/api"
-import type { UnitOfMeasure, SimpleUnit, UnitConversionRequest, UnitConversionResult } from "@server/types/unit-types"
+import type { UnitOfMeasure, UnitConversionRequest, UnitConversionResult } from "@server/types/ingredient-types"
 
 /**
  * Service for handling unit of measure-related API calls
@@ -15,17 +15,18 @@ export const unitService = {
 
     /**
      * Get a simplified list of units for dropdowns
-     */
+  
     getSimpleList: async (): Promise<SimpleUnit[]> => {
         const response = await api.get("/units/simple")
         return response.data
     },
+    */
 
     /**
      * Get units by type (volume, weight, etc.)
      */
     getByType: async (type: string): Promise<UnitOfMeasure[]> => {
-        const response = await api.get(`/units/type/${type}`)
+        const response = await api.get(`/units/type/${ type }`)
         return response.data
     },
 
@@ -33,7 +34,7 @@ export const unitService = {
      * Get a single unit by ID
      */
     getById: async (id: number): Promise<UnitOfMeasure> => {
-        const response = await api.get(`/units/${id}`)
+        const response = await api.get(`/units/${ id }`)
         return response.data
     },
 

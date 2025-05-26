@@ -38,7 +38,8 @@ export function useScaleRecipe(id: number, targetServingSize: number) {
     console.log("useScaleRecipe hook called with ID:", id, "and target serving size:", targetServingSize)
     return useQuery<Recipe>({
         queryKey: ["recipe", id, "scale", targetServingSize],
-        queryFn: () => recipeService.scale(id, targetServingSize),
+        //queryFn: () => recipeService.scale(id, targetServingSize),
+        queryFn: () => Promise.resolve(null),
         enabled: !!id && id > 0 && targetServingSize > 0,
     })
 }

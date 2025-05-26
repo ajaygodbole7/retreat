@@ -31,26 +31,8 @@ import { useRecipe, useCreateCompleteRecipe, useUpdateCompleteRecipe } from "../
 import type { RecipeIngredient, RecipeStep, CreateRecipeInput, UpdateRecipeInput } from "@server/types/recipe-types"; // Assuming path is correct
 import type { Ingredient } from "@server/types/ingredient-types"; // Assuming path is correct
 import type { UnitOfMeasure } from "@server/types/ingredient-types"; // Assuming path is correct
+import { CourseType, CookingMethod } from "@server/types/recipe-types";
 
-// --- Enums ---
-enum CourseType {
-    MAIN_COURSE = "MAIN_COURSE",
-    SIDE_DISH = "SIDE_DISH",
-    APPETIZER = "APPETIZER",
-    DESSERT = "DESSERT",
-    BREAKFAST = "BREAKFAST",
-    SNACK = "SNACK",
-    BEVERAGE = "BEVERAGE",
-}
-
-enum CookingMethod {
-    STOVETOP = "STOVETOP",
-    OVEN = "OVEN",
-    PRESSURE_COOKER = "PRESSURE_COOKER",
-    SLOW_COOK = "SLOW_COOK",
-    STEAM = "STEAM",
-    NO_COOK = "NO_COOK",
-}
 
 // --- Defaults ---
 const DEFAULT_BASE_SERVING_SIZE = 8;
@@ -61,8 +43,8 @@ const defaultRecipe: Partial<CreateRecipeInput> = {
     servingSize: DEFAULT_BASE_SERVING_SIZE, // Represents the base yield, editable by user
     preparationTimeMinutes: 15,
     cookingTimeMinutes: 30,
-    courseType: "MAIN_COURSE",
-    cookingMethod: "STOVETOP",
+    courseType: CourseType.MAIN_COURSE,
+    cookingMethod: CookingMethod.STOVETOP,
     isVegan: false,
     isGlutenFree: false,
     hasOnionGarlic: false,
@@ -394,16 +376,23 @@ export function RecipeForm() {
 
     // Handler for changes within the inline ingredient add/edit form
     const handleNewIngredientChange = (field: keyof RecipeIngredient, value: any) => {
-        // Special handling for numeric fields to ensure correct type
         if (field === 'quantity' || field === 'displayOrder') {
             const numValue = value === '' ? undefined : parseFloat(value);
-            setNewIngredient(prev => ({ ...prev, [field]: isNaN(numValue as number) ? undefined : numValue }));
+            setNewIngredient(prev => ({ 
+                ...prev, 
+                [field]: isNaN(numValue as number) ? undefined : numValue 
+            } as Partial<RecipeIngredient>));
         } else if (field === 'ingredientId' || field === 'unitId' || field === 'alternateIngredientId') {
             const numValue = value === '' || value === undefined ? undefined : parseInt(value, 10);
-            setNewIngredient(prev => ({ ...prev, [field]: isNaN(numValue as number) ? undefined : numValue }));
+            setNewIngredient(prev => ({ 
+                ...prev, 
+                [field]: isNaN(numValue as number) ? undefined : numValue 
+            } as Partial<RecipeIngredient>));
         } else {
-            // For text fields like preparation, notes
-            setNewIngredient(prev => ({ ...prev, [field]: value }));
+            setNewIngredient(prev => ({ 
+                ...prev, 
+                [field]: value 
+            } as Partial<RecipeIngredient>));
         }
     };
 
@@ -451,9 +440,9 @@ export function RecipeForm() {
         // Ensure IDs are strings if the SimpleCombobox expects string values
         setNewIngredient({
             ...ingredientToEdit,
-            ingredientId: ingredientToEdit.ingredientId?.toString(),
-            unitId: ingredientToEdit.unitId?.toString(),
-            alternateIngredientId: ingredientToEdit.alternateIngredientId?.toString(),
+            ingredientId: ingredientToEdit.ingredientId?.toString() as any,
+            unitId: ingredientToEdit.unitId?.toString() as any,
+            alternateIngredientId: ingredientToEdit.alternateIngredientId?.toString() as any,
         });
         setEditingIngredientIndex(index); // Set the index being edited
         // Scroll the inline form into view for better UX

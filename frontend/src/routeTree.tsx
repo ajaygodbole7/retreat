@@ -6,10 +6,7 @@ import {
     redirect,
     Outlet,
     // Import types for route configuration and context
-    type BeforeLoadContext,
     type RouteContext,
-    type RouteOptions, // Import RouteOptions for cleaner loader typing
-    type RouteConfig // Import RouteConfig
 } from "@tanstack/react-router";
 import { RootLayout } from "./components/layouts/RootLayout";
 import type { AuthContextType } from './contexts/auth-context'; // Ensure path is correct
@@ -41,8 +38,6 @@ interface MyRouterContext extends RouteContext {
 // Defines the shape of data returned by loaders for Edit/New forms
 interface EditContext { mode: 'edit'; id: number }
 interface NewContext { mode: 'new' }
-// Union type for components handling both modes
-type FormRouteLoaderData = EditContext | NewContext;
 
 // --- Create Root Route with Context ---
 export const rootRoute = createRootRouteWithContext<MyRouterContext>()({
@@ -52,9 +47,9 @@ export const rootRoute = createRootRouteWithContext<MyRouterContext>()({
 });
 
 // --- Authentication Guard Function ---
-const ensureAuthenticated = ({ context, location }: BeforeLoadContext<MyRouterContext>) => {
+const ensureAuthenticated = ({ context, location }: { context: MyRouterContext; location: any }) => {
     if (!context.auth.isLoading && !context.auth.isAuthenticated) {
-        throw redirect({ to: '/login', search: { redirect: location.href }, replace: true });
+        throw redirect({ to: '/login' });
     }
 };
 
@@ -63,14 +58,14 @@ const loginRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/login",
     component: LoginPage,
-    beforeLoad: ({ context }) => { if (!context.auth.isLoading && context.auth.isAuthenticated) throw redirect({ to: '/', replace: true }); }
+    beforeLoad: ({ context }) => { if (!context.auth.isLoading && context.auth.isAuthenticated) throw redirect({ to: '/' }); }
 });
 
 const registerRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/register",
     component: RegisterPage,
-    beforeLoad: ({ context }) => { if (!context.auth.isLoading && context.auth.isAuthenticated) throw redirect({ to: '/', replace: true }); }
+    beforeLoad: ({ context }) => { if (!context.auth.isLoading && context.auth.isAuthenticated) throw redirect({ to: '/' }); }
 });
 
 const comingSoonRoute = createRoute({
@@ -238,7 +233,7 @@ export const routeTree = rootRoute.addChildren([
 export const router = createRouter({
     routeTree,
     context: { auth: undefined! },
-});
+} as any);
 
 // --- Register Router Types ---
 // Define Params, Search, and LoaderData for type safety
@@ -249,11 +244,11 @@ declare module "@tanstack/react-router" {
 
         // --- Define Params (string from URL) ---
         '/ingredients/$ingredientId': { Params: { ingredientId: string } };
-        '/ingredients/$ingredientId/edit': { Params: { ingredientId: string } };
+        '/ingredients/$ingredientId/edit': { Params: { ingredientId: string }, LoaderData: EditContext };
         '/recipes/$recipeId': { Params: { recipeId: string } };
-        '/recipes/$recipeId/edit': { Params: { recipeId: string } };
+        '/recipes/$recipeId/edit': { Params: { recipeId: string }, LoaderData: EditContext };
         '/events/$eventId': { Params: { eventId: string } };
-        '/events/$eventId/edit': { Params: { eventId: string } };
+        '/events/$eventId/edit': { Params: { eventId: string }, LoaderData: EditContext };
 
         // --- Define Search Params ---
         '/login': { Search: LoginSearch };
@@ -261,11 +256,8 @@ declare module "@tanstack/react-router" {
         // --- Define Loader Data (Matches loader return types) ---
         // ** All New/Edit routes now have loaders **
         '/ingredients/new': { LoaderData: NewContext };
-        '/ingredients/$ingredientId/edit': { LoaderData: EditContext };
         '/recipes/new': { LoaderData: NewContext };
-        '/recipes/$recipeId/edit': { LoaderData: EditContext };
         '/events/new': { LoaderData: NewContext };
-        '/events/$eventId/edit': { LoaderData: EditContext };
     }
     // Define LoginSearch interface if needed
     interface LoginSearch {

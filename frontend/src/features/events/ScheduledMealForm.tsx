@@ -30,18 +30,12 @@ import { formatTimeForForm } from "../../utils/date-utils"
 const scheduledMealSchema = z.object({
     time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/, "Use HH:MM or HH:MM:SS"),
     mealType: z.nativeEnum(MealType),
-    attendeeHeadcount: z.preprocess(
-        (val) => (val === "" || val === null || val === undefined ? 0 : Number(val)),
-        z.number().int().nonnegative().optional().default(0),
-    ),
-    volunteerHeadcount: z.preprocess(
-        (val) => (val === "" || val === null || val === undefined ? 0 : Number(val)),
-        z.number().int().nonnegative().optional().default(0),
-    ),
-    menuId: z.preprocess(
-        (val) => (val === "" || val === null || val === undefined || val === "none" ? null : Number(val)),
-        z.number().int().positive().optional().nullable(),
-    ),
+    attendeeHeadcount: z.coerce.number().int().nonnegative().default(0),
+    volunteerHeadcount: z.coerce.number().int().nonnegative().default(0),
+    menuId: z.union([
+        z.coerce.number().int().positive(),
+        z.null()
+    ]).optional(),
     notes: z.string().optional().nullable(),
 })
 

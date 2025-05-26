@@ -85,7 +85,6 @@ export function EditScheduledMealDialog({ meal, eventId, dayId, isOpen, onClose,
                                             <div className="flex-1">
                                                 {/* Display Recipe Name and Notes */}
                                                 <span>{r.recipe?.name ?? `Recipe ID ${ r.recipeId }`}</span>
-                                                {r.notes && <p className="text-xs text-muted-foreground italic ml-2"> - {r.notes}</p>}
                                             </div>
                                             {/* Remove Recipe Button */}
                                             <Button variant="ghost" size="sm" className="h-6 px-1 text-destructive" onClick={() => handleRemoveRecipe(r.recipeId)} disabled={removeRecipeMutation.isPending && removeRecipeMutation.variables?.recipeId === r.recipeId}>

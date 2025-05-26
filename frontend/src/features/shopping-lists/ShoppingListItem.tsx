@@ -8,8 +8,8 @@ import { Badge } from "../../components/ui/badge";
 import { Loader2, Check, X, ShoppingBag, AlertCircle } from 'lucide-react';
 import { formatQuantity } from "../../utils/format-utils";
 import { cn } from "@/lib/utils";
-import type { ShoppingListItemData, ShoppingListItemStatus } from "@server/types/shopping-list-types";
-
+import type { ShoppingListItemData } from "@server/types/shopping-list-types";
+import { ShoppingListItemStatus } from "@server/types/shopping-list-types";
 interface ShoppingListItemProps {
     item: ShoppingListItemData;
     onUpdate: (itemId: number, data: Partial<ShoppingListItemData>) => void;
@@ -29,7 +29,7 @@ export function ShoppingListItem({ item, onUpdate, isUpdating, updatingItemId }:
         setStatus(newStatus);
 
         // If marking as purchased and no purchased quantity is set, use the calculated quantity
-        if (newStatus === "PURCHASED" && purchasedQuantity === undefined) {
+        if (newStatus === ShoppingListItemStatus.PURCHASED && purchasedQuantity === undefined) {
             setPurchasedQuantity(item.calculatedQuantity);
         }
 
@@ -50,15 +50,15 @@ export function ShoppingListItem({ item, onUpdate, isUpdating, updatingItemId }:
 
     const getStatusBadge = () => {
         switch (status) {
-            case "PURCHASED":
+            case ShoppingListItemStatus.PURCHASED:
                 return <Badge className="bg-green-500">Purchased</Badge>;
-            case "PARTIAL":
+            case ShoppingListItemStatus.PARTIAL:
                 return <Badge className="bg-amber-500">Partial</Badge>;
-            case "OUT_OF_STOCK":
+            case ShoppingListItemStatus.OUT_OF_STOCK:
                 return <Badge className="bg-red-500">Out of Stock</Badge>;
-            case "SUBSTITUTED":
+            case ShoppingListItemStatus.SUBSTITUTED:
                 return <Badge className="bg-blue-500">Substituted</Badge>;
-            case "NOT_NEEDED":
+            case ShoppingListItemStatus.NOT_NEEDED:
                 return <Badge variant="outline">Not Needed</Badge>;
             default:
                 return <Badge variant="outline" className="bg-gray-100">Needed</Badge>;
@@ -178,8 +178,8 @@ export function ShoppingListItem({ item, onUpdate, isUpdating, updatingItemId }:
                                 variant="outline"
                                 size="sm"
                                 className="h-7 px-2 text-xs"
-                                onClick={() => handleStatusChange("PURCHASED")}
-                                disabled={status === "PURCHASED" || isCurrentlyUpdating}
+                                onClick={() => handleStatusChange(ShoppingListItemStatus.PURCHASED)}
+                                disabled={status === ShoppingListItemStatus.PURCHASED || isCurrentlyUpdating}
                             >
                                 <Check className="mr-1 h-3 w-3" />
                                 Mark Purchased
@@ -188,8 +188,8 @@ export function ShoppingListItem({ item, onUpdate, isUpdating, updatingItemId }:
                                 variant="outline"
                                 size="sm"
                                 className="h-7 px-2 text-xs"
-                                onClick={() => handleStatusChange("OUT_OF_STOCK")}
-                                disabled={status === "OUT_OF_STOCK" || isCurrentlyUpdating}
+                                onClick={() => handleStatusChange(ShoppingListItemStatus.OUT_OF_STOCK)}
+                                disabled={status === ShoppingListItemStatus.OUT_OF_STOCK || isCurrentlyUpdating}
                             >
                                 <X className="mr-1 h-3 w-3" />
                                 Out of Stock
